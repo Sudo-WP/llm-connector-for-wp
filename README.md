@@ -1,4 +1,4 @@
-# WP LLM Connector
+# WordPress LLM Connector
 
 **Version:** 0.1.0 (MVP)  
 **Author:** SudoWP.com  
