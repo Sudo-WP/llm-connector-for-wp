@@ -60,15 +60,20 @@ jQuery( document ).ready( function( $ ) {
 		$temp.val( text ).select();
 
 		try {
-			document.execCommand( 'copy' );
-			$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
-			setTimeout( function() {
-				$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
-			}, 2000 );
+			var success = document.execCommand( 'copy' );
+			if ( success ) {
+				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+				setTimeout( function() {
+					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+				}, 2000 );
+				$temp.remove();
+			} else {
+				$temp.remove();
+				alert( wpLlmConnector.i18n.copyError );
+			}
 		} catch ( err ) {
+			$temp.remove();
 			alert( wpLlmConnector.i18n.copyError );
 		}
-
-		$temp.remove();
 	}
 } );

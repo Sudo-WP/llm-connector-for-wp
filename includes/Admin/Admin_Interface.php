@@ -396,7 +396,7 @@ class Admin_Interface {
 					'<code id="wp-llm-generated-key">' . esc_html( $api_key ) . '</code>'
 				);
 				
-				$message .= ' <button type="button" class="button button-small wp-llm-copy-key" data-key="' . esc_attr( $api_key ) . '" title="' . esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ) . '">' . esc_html__( 'Copy', 'wp-llm-connector' ) . '</button> ';
+				$message .= ' <button type="button" class="button button-small wp-llm-copy-key" data-key="' . esc_attr( $api_key ) . '" title="' . esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ) . '" aria-label="' . esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ) . '">' . esc_html__( 'Copy', 'wp-llm-connector' ) . '</button> ';
 				
 				$message .= __( '— Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' );
 				
