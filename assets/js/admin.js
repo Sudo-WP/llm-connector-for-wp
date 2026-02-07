@@ -43,11 +43,11 @@ jQuery( document ).ready( function( $ ) {
 
 		if ( $keyElement.hasClass( 'wp-llm-api-key-hidden' ) ) {
 			// Reveal the key.
-			$keyElement.removeClass( 'wp-llm-api-key-hidden' ).addClass( 'wp-llm-api-key-revealed' ).text( apiKey ).attr( 'title', wpLlmConnector.i18n.copyLabel );
+			$keyElement.removeClass( 'wp-llm-api-key-hidden' ).addClass( 'wp-llm-api-key-revealed' ).text( apiKey ).attr( 'title', wpLlmConnector.i18n.revealedKeyTitle );
 			$button.text( wpLlmConnector.i18n.hideText ).attr( 'aria-label', wpLlmConnector.i18n.hideText );
 		} else {
 			// Hide the key.
-			$keyElement.removeClass( 'wp-llm-api-key-revealed' ).addClass( 'wp-llm-api-key-hidden' ).text( '••••••••••••••••••••••••••••••••' ).attr( 'title', 'Click Reveal to view the key' );
+			$keyElement.removeClass( 'wp-llm-api-key-revealed' ).addClass( 'wp-llm-api-key-hidden' ).text( '••••••••••••••••••••••••••••••••' ).attr( 'title', wpLlmConnector.i18n.hiddenKeyTitle );
 			$button.text( wpLlmConnector.i18n.revealText ).attr( 'aria-label', wpLlmConnector.i18n.revealText );
 		}
 	} );

@@ -115,6 +115,8 @@ class Admin_Interface {
 					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
 					'revealText'     => __( 'Reveal', 'wp-llm-connector' ),
 					'hideText'       => __( 'Hide', 'wp-llm-connector' ),
+					'hiddenKeyTitle' => __( 'Click Reveal to view the key', 'wp-llm-connector' ),
+					'revealedKeyTitle' => __( 'Click or select to copy', 'wp-llm-connector' ),
 				),
 			)
 		);
