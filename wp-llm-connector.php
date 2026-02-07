@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: LLM Connector for WordPress Self-Hosted Websites
+ * Plugin Name: LLM Connector for WordPress
  * Plugin URI: https://github.com/Sudo-WP/llm-connector-for-wp
  * Description: Connect your WordPress site to LLM agents for secure, read-only diagnostics and administration
  * Version: 0.1.0
