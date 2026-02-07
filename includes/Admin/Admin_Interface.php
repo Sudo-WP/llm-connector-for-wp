@@ -419,7 +419,7 @@ class Admin_Interface {
 					),
 					30
 				);
-				
+
 				// Redirect to show error.
 				$redirect_url = add_query_arg(
 					array(
