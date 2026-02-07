@@ -93,8 +93,15 @@ class Admin_Interface {
 			'wp-llm-connector-admin',
 			'wpLlmConnector',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'wp_llm_connector_ajax' ),
+				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+				'nonce'              => wp_create_nonce( 'wp_llm_connector_ajax' ),
+				'i18n'               => array(
+					'copyLabel'      => __( 'Copy to clipboard', 'wp-llm-connector' ),
+					'copiedLabel'    => __( 'Copied to clipboard', 'wp-llm-connector' ),
+					'copyText'       => __( 'Copy', 'wp-llm-connector' ),
+					'copiedText'     => __( 'Copied!', 'wp-llm-connector' ),
+					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
+				),
 			)
 		);
 	}
