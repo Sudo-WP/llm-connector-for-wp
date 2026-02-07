@@ -317,9 +317,9 @@ GPL v2 or later
 
 ## Links
 
-- **Author**: [AmIHacked.com](https://amihacked.com)
+- **Author**: [AmIHacked.com](https://sudowp.com)
 - **Development**: [SudoWP.com](https://sudowp.com)
-- **Support**: [WPRepublic.com](https://wprepublic.com)
+- **Support**: [WPRepublic.com](https://sudowp.com)
 
 ## Disclaimer
 
