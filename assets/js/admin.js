@@ -1,144 +1,124 @@
-jQuery(document).ready(function($) {
-    'use strict';
+jQuery( document ).ready( function( $ ) {
+	'use strict';
 
-    // Reveal/Hide API key toggle
-    $('.reveal-api-key').on('click', function(e) {
-        e.preventDefault();
-        
-        var keyId = $(this).data('key-id');
-        var $button = $(this);
-        var $container = $button.closest('.api-key-container');
-        var $display = $container.find('.api-key-display[data-key-id="' + keyId + '"]');
-        var $hidden = $display.find('.api-key-hidden');
-        var $full = $display.find('.api-key-full');
-        
-        if ($button.hasClass('revealed')) {
-            // Hide the key
-            $full.hide();
-            $hidden.show();
-            $button.removeClass('revealed');
-            $button.html('<span class="dashicons dashicons-visibility"></span> Reveal');
-            $button.attr('title', 'Click to reveal full API key');
-        } else {
-            // Reveal the key
-            $hidden.hide();
-            $full.show().addClass('revealed');
-            $button.addClass('revealed');
-            $button.html('<span class="dashicons dashicons-hidden"></span> Hide');
-            $button.attr('title', 'Click to hide API key');
-        }
-    });
+	// Confirm before disabling connector if it's currently enabled.
+	var $enabledCheckbox = $( 'input[name="wp_llm_connector_settings[enabled]"]' );
+	$enabledCheckbox.data( 'initial-state', $enabledCheckbox.is( ':checked' ) );
 
-    // Copy API key to clipboard (modern approach)
-    $('.copy-api-key').on('click', function(e) {
-        e.preventDefault();
-        
-        var apiKey = $(this).data('key');
-        var $button = $(this);
-        var $icon = $button.find('.dashicons');
-        
-        // Use modern Clipboard API if available
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(apiKey).then(function() {
-                // Success
-                $button.addClass('copied');
-                $icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
-                
-                // Reset button after 2 seconds
-                setTimeout(function() {
-                    $button.removeClass('copied');
-                    $icon.removeClass('dashicons-yes').addClass('dashicons-clipboard');
-                }, 2000);
-            }).catch(function(err) {
-                console.error('Failed to copy:', err);
-                fallbackCopy(apiKey, $button, $icon);
-            });
-        } else {
-            // Fallback for older browsers
-            fallbackCopy(apiKey, $button, $icon);
-        }
-    });
-    
-    // Fallback copy method for older browsers
-    function fallbackCopy(text, $button, $icon) {
-        var $temp = $('<textarea>');
-        $('body').append($temp);
-        $temp.val(text).select();
-        
-        try {
-            var successful = document.execCommand('copy');
-            if (successful) {
-                $button.addClass('copied');
-                $icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
-                
-                setTimeout(function() {
-                    $button.removeClass('copied');
-                    $icon.removeClass('dashicons-yes').addClass('dashicons-clipboard');
-                }, 2000);
-            } else {
-                alert('Failed to copy API key. Please copy manually:\n\n' + text);
-            }
-        } catch(err) {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy API key. Please copy manually:\n\n' + text);
-        }
-        
-        $temp.remove();
-    }
+	$( 'form' ).on( 'submit', function( e ) {
+		var wasEnabled = $enabledCheckbox.data( 'initial-state' );
 
-    // Double-click to reveal temporarily (hover effect alternative)
-    $('.api-key-display').on('dblclick', function(e) {
-        e.preventDefault();
-        var keyId = $(this).data('key-id');
-        var $container = $(this).closest('.api-key-container');
-        var $revealBtn = $container.find('.reveal-api-key[data-key-id="' + keyId + '"]');
-        
-        if (!$revealBtn.hasClass('revealed')) {
-            $revealBtn.trigger('click');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(function() {
-                if ($revealBtn.hasClass('revealed')) {
-                    $revealBtn.trigger('click');
-                }
-            }, 5000);
-        }
-    });
+		if ( wasEnabled && ! $enabledCheckbox.is( ':checked' ) ) {
+			if ( ! confirm( 'Are you sure you want to disable the LLM Connector? All API access will be blocked.' ) ) {
+				e.preventDefault();
+				$enabledCheckbox.prop( 'checked', true );
+				return false;
+			}
+		}
 
-    // Confirm before disabling connector if it's currently enabled
-    $('form').on('submit', function(e) {
-        var enabledCheckbox = $('input[name="wp_llm_connector_settings[enabled]"]');
-        var wasEnabled = enabledCheckbox.data('initial-state') !== undefined 
-            ? enabledCheckbox.data('initial-state') 
-            : enabledCheckbox.is(':checked');
-        
-        if (wasEnabled && !enabledCheckbox.is(':checked')) {
-            if (!confirm('Are you sure you want to disable the LLM Connector? All API access will be blocked.')) {
-                e.preventDefault();
-                enabledCheckbox.prop('checked', true);
-                return false;
-            }
-        }
-        
-        // Store initial state
-        enabledCheckbox.data('initial-state', enabledCheckbox.is(':checked'));
-    });
+		$enabledCheckbox.data( 'initial-state', $enabledCheckbox.is( ':checked' ) );
+	} );
 
-    // Initialize checkbox states
-    $('input[name="wp_llm_connector_settings[enabled]"]').data(
-        'initial-state', 
-        $('input[name="wp_llm_connector_settings[enabled]"]').is(':checked')
-    );
+	// Warning when disabling read-only mode.
+	$( 'input[name="wp_llm_connector_settings[read_only_mode]"]' ).on( 'change', function() {
+		if ( ! $( this ).is( ':checked' ) ) {
+			if ( ! confirm( 'WARNING: Disabling read-only mode will allow LLMs to make changes to your site. This is not recommended unless you fully trust the LLM provider and have backups in place.\n\nContinue anyway?' ) ) {
+				$( this ).prop( 'checked', true );
+			}
+		}
+	} );
 
-    // Warning when disabling read-only mode
-    $('input[name="wp_llm_connector_settings[read_only_mode]"]').on('change', function() {
-        if (!$(this).is(':checked')) {
-            if (!confirm('WARNING: Disabling read-only mode will allow LLMs to make changes to your site. This is not recommended unless you fully trust the LLM provider and have backups in place.\n\nContinue anyway?')) {
-                $(this).prop('checked', true);
-            }
-        }
-    });
-    
-    // Tooltip helper for API key display
-    $('.api-key-display').attr('title', 'Double-click to temporarily reveal for 5 seconds');
-});
+	// Reveal/Hide API key functionality.
+	$( document ).on( 'click', '.wp-llm-reveal-key', function( e ) {
+		e.preventDefault();
+		var $button = $( this );
+		var $keyElement = $( '#wp-llm-generated-key' );
+		var apiKey = $button.data( 'key' );
+		
+		// Check if wpLlmConnector is defined.
+		if ( typeof wpLlmConnector === 'undefined' ) {
+			console.error( 'wpLlmConnector is not defined' );
+			return;
+		}
+
+		if ( $keyElement.hasClass( 'wp-llm-api-key-hidden' ) ) {
+			// Reveal the key.
+			$keyElement.removeClass( 'wp-llm-api-key-hidden' ).addClass( 'wp-llm-api-key-revealed' ).text( apiKey ).attr( 'title', wpLlmConnector.i18n.revealedKeyTitle );
+			$button.text( wpLlmConnector.i18n.hideText ).attr( 'aria-label', wpLlmConnector.i18n.hideKeyLabel );
+		} else {
+			// Hide the key.
+			$keyElement.removeClass( 'wp-llm-api-key-revealed' ).addClass( 'wp-llm-api-key-hidden' ).text( '••••••••••••••••••••••••••••••••' ).attr( 'title', wpLlmConnector.i18n.hiddenKeyTitle );
+			$button.text( wpLlmConnector.i18n.revealText ).attr( 'aria-label', wpLlmConnector.i18n.revealKeyLabel );
+		}
+	} );
+
+	// Copy API key to clipboard.
+	$( document ).on( 'click', '.wp-llm-copy-key', function( e ) {
+		e.preventDefault();
+		var $button = $( this );
+		var apiKey = $button.data( 'key' );
+		var originalText = $button.text();
+
+		// Check if wpLlmConnector is defined.
+		if ( typeof wpLlmConnector === 'undefined' ) {
+			console.error( 'wpLlmConnector is not defined' );
+			alert( 'Failed to copy to clipboard. Please select and copy the key manually.' );
+			return;
+		}
+
+		// Try modern clipboard API first.
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( apiKey ).then( function() {
+				// Success feedback.
+				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+				setTimeout( function() {
+					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+				}, 2000 );
+			} ).catch( function() {
+				// Fallback if clipboard API fails.
+				fallbackCopyToClipboard( apiKey, $button, originalText );
+			} );
+		} else {
+			// Fallback for older browsers.
+			fallbackCopyToClipboard( apiKey, $button, originalText );
+		}
+	} );
+
+	// Fallback copy method for older browsers.
+	function fallbackCopyToClipboard( text, $button, originalText ) {
+		var $temp = $( '<textarea>' );
+		var success = false;
+		
+		$( 'body' ).append( $temp );
+		$temp.val( text ).select();
+
+		try {
+			success = document.execCommand( 'copy' );
+		} catch ( err ) {
+			success = false;
+		}
+
+		$temp.remove();
+
+		if ( success ) {
+			// Check if wpLlmConnector is defined before using it.
+			if ( typeof wpLlmConnector !== 'undefined' ) {
+				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+				setTimeout( function() {
+					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+				}, 2000 );
+			} else {
+				$button.text( 'Copied!' );
+				setTimeout( function() {
+					$button.text( originalText );
+				}, 2000 );
+			}
+		} else {
+			if ( typeof wpLlmConnector !== 'undefined' ) {
+				alert( wpLlmConnector.i18n.copyError );
+			} else {
+				alert( 'Failed to copy to clipboard. Please select and copy the key manually.' );
+			}
+		}
+	}
+} );
