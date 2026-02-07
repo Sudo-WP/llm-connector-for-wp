@@ -390,14 +390,7 @@ class Admin_Interface {
 			// Check if key name already exists.
 			$settings = get_option( 'wp_llm_connector_settings', array() );
 			$existing_keys = $settings['api_keys'] ?? array();
-			$name_exists = false;
-
-			foreach ( $existing_keys as $existing_key ) {
-				if ( isset( $existing_key['name'] ) && $existing_key['name'] === $key_name ) {
-					$name_exists = true;
-					break;
-				}
-			}
+			$name_exists = in_array( $key_name, array_column( $existing_keys, 'name' ), true );
 
 			if ( $name_exists ) {
 				add_settings_error(
