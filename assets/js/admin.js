@@ -35,6 +35,13 @@ jQuery( document ).ready( function( $ ) {
 		var apiKey = $button.data( 'key' );
 		var originalText = $button.text();
 
+		// Check if wpLlmConnector is defined.
+		if ( typeof wpLlmConnector === 'undefined' ) {
+			console.error( 'wpLlmConnector is not defined' );
+			alert( 'Failed to copy to clipboard. Please select and copy the key manually.' );
+			return;
+		}
+
 		// Try modern clipboard API first.
 		if ( navigator.clipboard && navigator.clipboard.writeText ) {
 			navigator.clipboard.writeText( apiKey ).then( function() {
@@ -70,12 +77,24 @@ jQuery( document ).ready( function( $ ) {
 		$temp.remove();
 
 		if ( success ) {
-			$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
-			setTimeout( function() {
-				$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
-			}, 2000 );
+			// Check if wpLlmConnector is defined before using it.
+			if ( typeof wpLlmConnector !== 'undefined' ) {
+				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+				setTimeout( function() {
+					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+				}, 2000 );
+			} else {
+				$button.text( 'Copied!' );
+				setTimeout( function() {
+					$button.text( originalText );
+				}, 2000 );
+			}
 		} else {
-			alert( wpLlmConnector.i18n.copyError );
+			if ( typeof wpLlmConnector !== 'undefined' ) {
+				alert( wpLlmConnector.i18n.copyError );
+			} else {
+				alert( 'Failed to copy to clipboard. Please select and copy the key manually.' );
+			}
 		}
 	}
 } );
