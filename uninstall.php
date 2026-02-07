@@ -24,7 +24,8 @@ if ( ! $preserve_settings ) {
 	// Drop audit log table.
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'llm_connector_audit_log';
-	$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table_name ) );
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+	$wpdb->query( "DROP TABLE IF EXISTS `{$table_name}`" );
 
 	// Clear any transients using prepared LIKE query.
 	$wpdb->query(

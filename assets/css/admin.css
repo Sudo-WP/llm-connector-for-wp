@@ -193,14 +193,3 @@
 		grid-row: 2;
 	}
 }
-
-@media screen and (max-width: 1200px) {
-	.wp-llm-connector-admin-container {
-		grid-template-columns: 1fr;
-	}
-
-	.wp-llm-connector-api-keys,
-	.wp-llm-connector-info {
-		grid-column: 1;
-	}
-}
