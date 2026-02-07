@@ -1,6 +1,6 @@
 .wp-llm-connector-admin-container {
 	display: grid;
-	grid-template-columns: 2fr 1fr;
+	grid-template-columns: 1fr;
 	gap: 20px;
 	margin-top: 20px;
 }
@@ -14,9 +14,16 @@
 	box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
 }
 
-.wp-llm-connector-api-keys,
+.wp-llm-connector-main-settings {
+	order: 1;
+}
+
+.wp-llm-connector-api-keys {
+	order: 2;
+}
+
 .wp-llm-connector-info {
-	grid-column: 2;
+	order: 3;
 }
 
 .info-box {
@@ -88,6 +95,37 @@
 	margin-bottom: 30px;
 }
 
+.wp-llm-generate-key h3 {
+	margin-top: 0;
+}
+
+.wp-llm-generate-key input[type="text"] {
+	margin-right: 10px;
+}
+
+/* Improve form table readability */
+.wp-llm-connector-main-settings .form-table th {
+	padding-top: 15px;
+	padding-bottom: 15px;
+	width: 220px;
+}
+
+.wp-llm-connector-main-settings .form-table td {
+	padding-top: 15px;
+	padding-bottom: 15px;
+}
+
+.wp-llm-connector-main-settings .form-table .description {
+	margin-top: 5px;
+	font-style: italic;
+}
+
+.wp-llm-connector-api-keys h2,
+.wp-llm-connector-info h2 {
+	margin-top: 0;
+	font-size: 20px;
+}
+
 /* Existing keys title */
 .wp-llm-existing-keys-title {
 	margin-top: 30px;
@@ -107,13 +145,53 @@
 	cursor: pointer;
 }
 
-@media screen and (max-width: 1200px) {
-	.wp-llm-connector-admin-container {
-		grid-template-columns: 1fr;
+/* Responsive table styling for mobile devices */
+/* 782px breakpoint matches WordPress admin responsive breakpoint */
+@media screen and (max-width: 782px) {
+	.wp-llm-connector-api-keys table {
+		font-size: 14px;
 	}
+	
+	.wp-llm-connector-api-keys td,
+	.wp-llm-connector-api-keys th {
+		padding: 10px 8px;
+	}
+	
+	.api-key-display {
+		font-size: 11px;
+		padding: 3px 6px;
+	}
+	
+	.wp-llm-generate-key input[type="text"] {
+		width: 100%;
+		margin-bottom: 10px;
+	}
+	
+	.wp-llm-generate-key .button {
+		width: 100%;
+	}
+}
 
-	.wp-llm-connector-api-keys,
+/* Desktop layout - 2 column grid for larger screens */
+/* Breakpoint at 1201px means desktop layout applies when width > 1200px */
+@media screen and (min-width: 1201px) {
+	.wp-llm-connector-admin-container {
+		grid-template-columns: 2fr 1fr;
+		grid-template-rows: auto auto;
+	}
+	
+	.wp-llm-connector-main-settings {
+		grid-column: 1;
+		grid-row: 1;
+	}
+	
+	.wp-llm-connector-api-keys {
+		grid-column: 2;
+		grid-row: 1 / 3;
+	}
+	
 	.wp-llm-connector-info {
 		grid-column: 1;
+		grid-row: 2;
 	}
 }

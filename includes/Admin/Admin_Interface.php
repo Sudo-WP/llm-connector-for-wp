@@ -8,6 +8,7 @@ class Admin_Interface {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'handle_api_key_actions' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_filter( 'plugin_action_links_' . plugin_basename( WP_LLM_CONNECTOR_PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
 	}
 
 	public function add_admin_menu() {
@@ -18,6 +19,16 @@ class Admin_Interface {
 			'wp-llm-connector',
 			array( $this, 'render_settings_page' )
 		);
+	}
+
+	public function add_settings_link( $links ) {
+		$settings_link = sprintf(
+			'<a href="%s">%s</a>',
+			admin_url( 'options-general.php?page=wp-llm-connector' ),
+			__( 'Settings', 'wp-llm-connector' )
+		);
+		array_unshift( $links, $settings_link );
+		return $links;
 	}
 
 	public function register_settings() {
@@ -35,6 +46,7 @@ class Admin_Interface {
 		$sanitized['read_only_mode'] = isset( $input['read_only_mode'] ) ? (bool) $input['read_only_mode'] : true;
 		$sanitized['rate_limit']     = isset( $input['rate_limit'] ) ? absint( $input['rate_limit'] ) : 60;
 		$sanitized['log_requests']   = isset( $input['log_requests'] ) ? (bool) $input['log_requests'] : true;
+		$sanitized['preserve_settings_on_uninstall'] = isset( $input['preserve_settings_on_uninstall'] ) ? (bool) $input['preserve_settings_on_uninstall'] : false;
 
 		// Clamp rate limit to valid range.
 		$sanitized['rate_limit'] = max( 1, min( 1000, $sanitized['rate_limit'] ) );
@@ -184,6 +196,20 @@ class Admin_Interface {
 									</label>
 									<p class="description">
 										<?php esc_html_e( 'Keep an audit trail of all LLM access', 'wp-llm-connector' ); ?>
+									</p>
+								</td>
+							</tr>
+
+							<tr>
+								<th scope="row"><?php esc_html_e( 'Preserve Settings', 'wp-llm-connector' ); ?></th>
+								<td>
+									<label>
+										<input type="checkbox" name="wp_llm_connector_settings[preserve_settings_on_uninstall]" value="1"
+											<?php checked( $settings['preserve_settings_on_uninstall'] ?? false, true ); ?>>
+										<?php esc_html_e( 'Keep settings when plugin is deleted', 'wp-llm-connector' ); ?>
+									</label>
+									<p class="description">
+										<?php esc_html_e( 'When enabled, plugin settings and API keys will be preserved even after the plugin is uninstalled. This is useful if you plan to reinstall the plugin later.', 'wp-llm-connector' ); ?>
 									</p>
 								</td>
 							</tr>
