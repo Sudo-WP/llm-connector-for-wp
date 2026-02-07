@@ -7,6 +7,7 @@ class Admin_Interface {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'handle_api_key_actions' ) );
+		add_action( 'admin_init', array( $this, 'handle_log_actions' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WP_LLM_CONNECTOR_PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
 	}
@@ -188,6 +189,18 @@ class Admin_Interface {
 					}
 				}
 			}
+
+			// Display log purge success message.
+			if ( isset( $_GET['log_purged'] ) && $_GET['log_purged'] === '1' ) {
+				// Verify nonce to prevent URL manipulation.
+				if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_log_purged' ) ) {
+					?>
+					<div class="notice notice-success is-dismissible">
+						<p><?php esc_html_e( 'Audit log purged successfully.', 'wp-llm-connector' ); ?></p>
+					</div>
+					<?php
+				}
+			}
 			?>
 
 			<?php settings_errors( 'wp_llm_connector_messages' ); ?>
@@ -245,11 +258,34 @@ class Admin_Interface {
 									<label>
 										<input type="checkbox" name="wp_llm_connector_settings[log_requests]" value="1"
 											<?php checked( $settings['log_requests'] ?? true, true ); ?>>
-										<?php esc_html_e( 'Log all API requests', 'wp-llm-connector' ); ?>
+										<?php esc_html_e( 'Log all API requests.', 'wp-llm-connector' ); ?>
 									</label>
 									<p class="description">
-										<?php esc_html_e( 'Keep an audit trail of all LLM access', 'wp-llm-connector' ); ?>
+										<?php
+										esc_html_e( 'Keep an audit trail of all LLM access.', 'wp-llm-connector' );
+										echo ' ';
+										global $wpdb;
+										$table_name = $wpdb->prefix . 'llm_connector_audit_log';
+										/* translators: %s: database table name */
+										printf( esc_html__( 'Logs are stored in the database table: %s', 'wp-llm-connector' ), '<code>' . esc_html( $table_name ) . '</code>' );
+										?>
 									</p>
+									<?php
+									// Get log count.
+									$log_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
+									if ( $log_count > 0 ) :
+										?>
+										<form method="post" action="" style="margin-top: 10px;">
+											<?php wp_nonce_field( 'wp_llm_connector_purge_log', 'wp_llm_connector_log_nonce' ); ?>
+											<button type="submit" name="purge_log" class="button button-secondary"
+												onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to delete all log entries? This action cannot be undone.', 'wp-llm-connector' ) ); ?>');">
+												<?php
+												/* translators: %d: number of log entries */
+												printf( esc_html__( 'Purge Log (%d entries)', 'wp-llm-connector' ), absint( $log_count ) );
+												?>
+											</button>
+										</form>
+									<?php endif; ?>
 								</td>
 							</tr>
 
@@ -539,6 +575,40 @@ class Admin_Interface {
 				__( 'API Key revoked successfully.', 'wp-llm-connector' ),
 				'success'
 			);
+		}
+	}
+
+	public function handle_log_actions() {
+		// Only handle actions on our settings page.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Only process on our admin page.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified later when processing forms.
+		if ( ! isset( $_GET['page'] ) || 'wp-llm-connector' !== $_GET['page'] ) {
+			return;
+		}
+
+		// Purge log.
+		if ( isset( $_POST['purge_log'] ) && check_admin_referer( 'wp_llm_connector_purge_log', 'wp_llm_connector_log_nonce' ) ) {
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'llm_connector_audit_log';
+
+			// Truncate the audit log table.
+			$wpdb->query( "TRUNCATE TABLE {$table_name}" );
+
+			// Redirect to show success message.
+			$redirect_url = add_query_arg(
+				array(
+					'page'        => 'wp-llm-connector',
+					'log_purged'  => '1',
+					'_wpnonce'    => wp_create_nonce( 'wp_llm_connector_log_purged' ),
+				),
+				admin_url( 'options-general.php' )
+			);
+			wp_safe_redirect( $redirect_url );
+			exit;
 		}
 	}
 }

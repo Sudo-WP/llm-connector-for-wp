@@ -1,10 +1,10 @@
 # LLM Connector for WordPress
 
-**Version:** 0.1.0 (MVP)  
+**Version:** 0.1.1 (MVP)  
 **Author:** SudoWP.com  
 **License:** GPL v2 or later
 
-A secure WordPress plugin that enables LLM agents (like Claude Code) to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration.
+A secure WordPress plugin that enables LLM agents (like Claude Code) to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration. Currently supports Claude Code LLM with more LLMs coming in future versions.
 
 ## Purpose
 
