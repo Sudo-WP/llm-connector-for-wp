@@ -93,8 +93,15 @@ class Admin_Interface {
 			'wp-llm-connector-admin',
 			'wpLlmConnector',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'wp_llm_connector_ajax' ),
+				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
+				'nonce'              => wp_create_nonce( 'wp_llm_connector_ajax' ),
+				'i18n'               => array(
+					'copyLabel'      => __( 'Copy to clipboard', 'wp-llm-connector' ),
+					'copiedLabel'    => __( 'Copied to clipboard', 'wp-llm-connector' ),
+					'copyText'       => __( 'Copy', 'wp-llm-connector' ),
+					'copiedText'     => __( 'Copied!', 'wp-llm-connector' ),
+					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
+				),
 			)
 		);
 	}
@@ -381,14 +388,22 @@ class Admin_Interface {
 			$api_key = get_transient( 'wp_llm_connector_new_key' );
 			if ( $api_key ) {
 				delete_transient( 'wp_llm_connector_new_key' );
+				
+				// Build the message with the copy button outside of the translatable string.
+				$message = sprintf(
+					/* translators: %s: the generated API key */
+					__( 'API Key generated successfully: %s', 'wp-llm-connector' ),
+					'<code id="wp-llm-generated-key">' . esc_html( $api_key ) . '</code>'
+				);
+				
+				$message .= ' <button type="button" class="button button-small wp-llm-copy-key" data-key="' . esc_attr( $api_key ) . '" aria-label="' . esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ) . '">' . esc_html__( 'Copy', 'wp-llm-connector' ) . '</button> ';
+				
+				$message .= __( '— Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' );
+				
 				add_settings_error(
 					'wp_llm_connector_messages',
 					'key_generated',
-					sprintf(
-						/* translators: %s: the generated API key */
-						__( 'API Key generated successfully: %s — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
-						'<code>' . esc_html( $api_key ) . '</code>'
-					),
+					$message,
 					'success'
 				);
 			}
