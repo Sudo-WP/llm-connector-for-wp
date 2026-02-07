@@ -149,6 +149,41 @@
 	cursor: pointer;
 }
 
+/* Reveal button styling */
+.wp-llm-reveal-key {
+	margin-left: 10px;
+	vertical-align: middle;
+	cursor: pointer;
+}
+
+/* API key display states */
+.wp-llm-api-key-hidden {
+	user-select: none;
+	cursor: default;
+	letter-spacing: 2px;
+}
+
+.wp-llm-api-key-revealed {
+	user-select: all;
+	cursor: text;
+	background: #fff8dc;
+	padding: 6px 10px;
+	border: 1px solid #d4af37;
+	border-radius: 3px;
+	transition: background-color 0.2s ease;
+}
+
+.wp-llm-api-key-revealed:hover {
+	background: #fffacd;
+	outline: 2px solid #d4af37;
+}
+
+/* Container for key and buttons */
+.wp-llm-key-container {
+	display: inline-block;
+	margin: 5px 0;
+}
+
 /* Inline form for revoke buttons */
 .wp-llm-inline-form {
 	display: inline;

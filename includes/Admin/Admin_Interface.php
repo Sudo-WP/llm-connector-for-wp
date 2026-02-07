@@ -113,6 +113,8 @@ class Admin_Interface {
 					'copyText'       => __( 'Copy', 'wp-llm-connector' ),
 					'copiedText'     => __( 'Copied!', 'wp-llm-connector' ),
 					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
+					'revealText'     => __( 'Reveal', 'wp-llm-connector' ),
+					'hideText'       => __( 'Hide', 'wp-llm-connector' ),
 				),
 			)
 		);
@@ -165,7 +167,12 @@ class Admin_Interface {
 						<div class="notice notice-success is-dismissible">
 							<p>
 								<strong><?php esc_html_e( 'API Key generated successfully:', 'wp-llm-connector' ); ?></strong>
-								<code id="wp-llm-generated-key"><?php echo esc_html( $api_key ); ?></code>
+								<span class="wp-llm-key-container">
+									<code id="wp-llm-generated-key" class="wp-llm-api-key-hidden" data-key="<?php echo esc_attr( $api_key ); ?>" title="<?php echo esc_attr__( 'Click Reveal to view the key', 'wp-llm-connector' ); ?>">••••••••••••••••••••••••••••••••</code>
+								</span>
+								<button type="button" class="button button-small wp-llm-reveal-key" data-key="<?php echo esc_attr( $api_key ); ?>" aria-label="<?php echo esc_attr__( 'Reveal key', 'wp-llm-connector' ); ?>">
+									<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
+								</button>
 								<button type="button" class="button button-small wp-llm-copy-key" data-key="<?php echo esc_attr( $api_key ); ?>" aria-label="<?php echo esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ); ?>">
 									<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
 								</button>
