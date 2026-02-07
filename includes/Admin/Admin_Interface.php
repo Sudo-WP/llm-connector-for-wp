@@ -318,7 +318,15 @@ class Admin_Interface {
 				set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
 				
 				// Redirect to avoid form resubmission and ensure fresh data load.
-				wp_safe_redirect( add_query_arg( 'key_generated', '1', wp_get_referer() ) );
+				$redirect_url = add_query_arg(
+					array(
+						'page'          => 'wp-llm-connector',
+						'key_generated' => '1',
+						'_wpnonce'      => wp_create_nonce( 'wp_llm_connector_key_generated' ),
+					),
+					admin_url( 'options-general.php' )
+				);
+				wp_safe_redirect( $redirect_url );
 				exit;
 			} else {
 				add_settings_error(
@@ -332,6 +340,11 @@ class Admin_Interface {
 
 		// Show the generated key after redirect.
 		if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
+			// Verify nonce to prevent URL manipulation.
+			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
+				return;
+			}
+
 			$api_key = get_transient( 'wp_llm_connector_new_key' );
 			if ( $api_key ) {
 				delete_transient( 'wp_llm_connector_new_key' );
@@ -359,7 +372,15 @@ class Admin_Interface {
 
 				if ( $updated ) {
 					// Redirect to avoid form resubmission.
-					wp_safe_redirect( add_query_arg( 'key_revoked', '1', wp_get_referer() ) );
+					$redirect_url = add_query_arg(
+						array(
+							'page'        => 'wp-llm-connector',
+							'key_revoked' => '1',
+							'_wpnonce'    => wp_create_nonce( 'wp_llm_connector_key_revoked' ),
+						),
+						admin_url( 'options-general.php' )
+					);
+					wp_safe_redirect( $redirect_url );
 					exit;
 				} else {
 					add_settings_error(
@@ -374,6 +395,11 @@ class Admin_Interface {
 
 		// Show revocation success message after redirect.
 		if ( isset( $_GET['key_revoked'] ) && $_GET['key_revoked'] === '1' ) {
+			// Verify nonce to prevent URL manipulation.
+			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_revoked' ) ) {
+				return;
+			}
+
 			add_settings_error(
 				'wp_llm_connector_messages',
 				'key_revoked',
