@@ -1,4 +1,4 @@
-=== WP LLM Connector ===
+=== LLM Connector for WordPress Self-Hosted Websites ===
 Contributors: SudoWP, WP Republic
 Tags: llm, ai, api, rest-api, diagnostics
 Requires at least: 5.8
@@ -12,7 +12,7 @@ Connect your WordPress site to LLM agents for secure, read-only diagnostics and 
 
 == Description ==
 
-WP LLM Connector creates a secure REST API bridge between your WordPress site and Large Language Model agents such as Claude, GPT, and other AI assistants. It enables LLMs to read site diagnostics, plugin and theme inventories, system status, and content statistics through authenticated, rate-limited endpoints.
+LLM Connector for WordPress Self-Hosted Websites creates a secure REST API bridge between your WordPress site and Large Language Model agents such as Claude, GPT, and other AI assistants. It enables LLMs to read site diagnostics, plugin and theme inventories, system status, and content statistics through authenticated, rate-limited endpoints.
 
 **Key Features:**
 
@@ -47,7 +47,7 @@ WP LLM Connector creates a secure REST API bridge between your WordPress site an
 
 = Is my API key stored securely? =
 
-Yes. The API keys you generate are stored as SHA-256 hashes in WordPress. The raw key is displayed only once at generation time and is never stored or shown again. These keys are used by LLM services (like Claude, GPT) to authenticate when connecting to your WordPress site.
+Yes. The API keys you generate are stored as SHA-256 hashes in WordPress. The raw key is displayed only once at generation time and is never stored or shown again. These keys are used by LLM services (such as Claude and GPT) to authenticate when connecting to your WordPress site.
 
 = Can LLMs modify my site? =
 
@@ -55,7 +55,7 @@ By default, the plugin enforces read-only mode. All endpoints return data withou
 
 = How does rate limiting work? =
 
-Each API key has its own rate limit window of one hour. The default is 60 requests per hour, configurable from 1 to 1000 in the settings.
+Each API key has a one-hour rate limit window. The default is 60 requests per hour; it can be configured from 1 to 1000 in the settings.
 
 = Does this plugin work with any LLM? =
 
