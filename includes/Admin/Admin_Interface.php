@@ -386,8 +386,11 @@ class Admin_Interface {
 					'key_generated',
 					sprintf(
 						/* translators: %s: the generated API key */
-						__( 'API Key generated successfully: %s — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
-						'<code>' . esc_html( $api_key ) . '</code>'
+						__( 'API Key generated successfully: %s <button type="button" class="button button-small wp-llm-copy-key" data-key="%s" title="%s">%s</button> — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
+						'<code id="wp-llm-generated-key">' . esc_html( $api_key ) . '</code>',
+						esc_attr( $api_key ),
+						esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ),
+						esc_html__( 'Copy', 'wp-llm-connector' )
 					),
 					'success'
 				);

@@ -27,4 +27,48 @@ jQuery( document ).ready( function( $ ) {
 			}
 		}
 	} );
+
+	// Copy API key to clipboard.
+	$( document ).on( 'click', '.wp-llm-copy-key', function( e ) {
+		e.preventDefault();
+		var $button = $( this );
+		var apiKey = $button.data( 'key' );
+		var originalText = $button.text();
+
+		// Try modern clipboard API first.
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( apiKey ).then( function() {
+				// Success feedback.
+				$button.text( 'Copied!' );
+				setTimeout( function() {
+					$button.text( originalText );
+				}, 2000 );
+			} ).catch( function() {
+				// Fallback if clipboard API fails.
+				fallbackCopyToClipboard( apiKey, $button, originalText );
+			} );
+		} else {
+			// Fallback for older browsers.
+			fallbackCopyToClipboard( apiKey, $button, originalText );
+		}
+	} );
+
+	// Fallback copy method for older browsers.
+	function fallbackCopyToClipboard( text, $button, originalText ) {
+		var $temp = $( '<textarea>' );
+		$( 'body' ).append( $temp );
+		$temp.val( text ).select();
+
+		try {
+			document.execCommand( 'copy' );
+			$button.text( 'Copied!' );
+			setTimeout( function() {
+				$button.text( originalText );
+			}, 2000 );
+		} catch ( err ) {
+			alert( 'Failed to copy. Please copy manually: ' + text );
+		}
+
+		$temp.remove();
+	}
 } );
