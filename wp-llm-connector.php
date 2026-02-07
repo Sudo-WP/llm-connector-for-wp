@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: WP LLM Connector
- * Plugin URI: https://github.com/Sudo-WP/wp-llm-connector
+ * Plugin Name: LLM Connector for WordPress Self-Hosted Websites
+ * Plugin URI: https://github.com/Sudo-WP/llm-connector-for-wp
  * Description: Connect your WordPress site to LLM agents for secure, read-only diagnostics and administration
  * Version: 0.1.0
  * Author: SudoWP
- * Author URI: https://sudo.com
+ * Author URI: https://sudowp.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: wp-llm-connector
