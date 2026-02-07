@@ -276,7 +276,7 @@ wp_llm_connector_audit_log
 - `wp_llm_connector_settings`: Main plugin configuration
 - `wp_llm_connector_activated`: Activation timestamp
 
-## 🚧 Roadmap
+## Roadmap
 
 ### Phase 1 (Current - MVP)
 - ✅ Read-only REST API endpoints
