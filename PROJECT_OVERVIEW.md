@@ -192,9 +192,9 @@ wp-llm-connector/
 2. **Activate** via Plugins menu
 3. **Navigate** to Settings > LLM Connector
 4. **Enable** the connector
-5. **Generate** an API key
+5. **Generate** an API key (this key will be used by LLM services to authenticate with WordPress)
 6. **Copy** and save the key securely
-7. **Configure** Claude Code with the key
+7. **Configure** Claude Code with the key from step 5
 8. **Test** the connection
 
 ### For Developers

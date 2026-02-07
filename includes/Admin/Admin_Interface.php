@@ -277,6 +277,9 @@ class Admin_Interface {
 
 			<div class="wp-llm-generate-key">
 				<h3><?php esc_html_e( 'Generate New API Key', 'wp-llm-connector' ); ?></h3>
+				<p class="description">
+					<?php esc_html_e( 'Generate an API key that LLM services (like Claude) will use to authenticate with your WordPress site.', 'wp-llm-connector' ); ?>
+				</p>
 				<input type="text" name="key_name"
 					placeholder="<?php echo esc_attr__( 'Key name (e.g., Claude Production)', 'wp-llm-connector' ); ?>"
 					class="regular-text" required>
@@ -314,7 +317,7 @@ class Admin_Interface {
 				'key_generated',
 				sprintf(
 					/* translators: %s: the generated API key */
-					__( 'API Key generated successfully: %s — Copy this key now. It cannot be shown again.', 'wp-llm-connector' ),
+					__( 'API Key generated successfully: %s — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
 					'<code>' . esc_html( $api_key ) . '</code>'
 				),
 				'success'

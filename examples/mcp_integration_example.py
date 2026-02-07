@@ -5,12 +5,17 @@ WP LLM Connector - Claude Code MCP Integration Example
 This script demonstrates how to integrate the WP LLM Connector
 with Claude Code using the Model Context Protocol (MCP).
 
+IMPORTANT: The API_KEY used here is the key you generated in WordPress
+(Settings > LLM Connector), NOT a Claude/Anthropic API key. This key is
+used by Claude to authenticate when connecting to your WordPress site.
+
 Requirements:
     - Python 3.8+
     - requests library: pip install requests
 
 Usage:
-    python mcp_integration_example.py
+    1. Replace WORDPRESS_URL and API_KEY below with your actual values
+    2. Run: python mcp_integration_example.py
 """
 
 import json
@@ -18,8 +23,11 @@ import os
 from typing import Dict, Any, List
 
 # Configuration
+# IMPORTANT: Replace these values with:
+# 1. Your WordPress site URL
+# 2. The API key you generated in WordPress (Settings > LLM Connector)
 WORDPRESS_URL = "https://yoursite.com"
-API_KEY = "wpllm_your_api_key_here"  # Replace with your actual API key
+API_KEY = "wpllm_your_api_key_here"  # Use the API key from WordPress admin, NOT Claude API key
 MCP_CONFIG_PATH = os.path.expanduser("~/.claude/mcp_config.json")
 
 
