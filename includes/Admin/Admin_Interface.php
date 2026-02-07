@@ -44,9 +44,14 @@ class Admin_Interface {
 			? array_map( 'sanitize_text_field', $input['allowed_endpoints'] )
 			: array();
 
-		// Preserve existing API keys (managed separately).
-		$current_settings          = get_option( 'wp_llm_connector_settings', array() );
-		$sanitized['api_keys']     = $current_settings['api_keys'] ?? array();
+		// Preserve existing API keys if not provided in input (form submissions don't include them).
+		// If api_keys are in the input, use them (programmatic updates via handle_api_key_actions).
+		if ( isset( $input['api_keys'] ) && is_array( $input['api_keys'] ) ) {
+			$sanitized['api_keys'] = $input['api_keys'];
+		} else {
+			$current_settings      = get_option( 'wp_llm_connector_settings', array() );
+			$sanitized['api_keys'] = $current_settings['api_keys'] ?? array();
+		}
 
 		return $sanitized;
 	}
