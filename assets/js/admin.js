@@ -39,9 +39,9 @@ jQuery( document ).ready( function( $ ) {
 		if ( navigator.clipboard && navigator.clipboard.writeText ) {
 			navigator.clipboard.writeText( apiKey ).then( function() {
 				// Success feedback.
-				$button.text( 'Copied!' );
+				$button.text( 'Copied!' ).attr( 'aria-label', 'Copied to clipboard' );
 				setTimeout( function() {
-					$button.text( originalText );
+					$button.text( originalText ).attr( 'aria-label', 'Copy to clipboard' );
 				}, 2000 );
 			} ).catch( function() {
 				// Fallback if clipboard API fails.
@@ -61,12 +61,12 @@ jQuery( document ).ready( function( $ ) {
 
 		try {
 			document.execCommand( 'copy' );
-			$button.text( 'Copied!' );
+			$button.text( 'Copied!' ).attr( 'aria-label', 'Copied to clipboard' );
 			setTimeout( function() {
-				$button.text( originalText );
+				$button.text( originalText ).attr( 'aria-label', 'Copy to clipboard' );
 			}, 2000 );
 		} catch ( err ) {
-			alert( 'Failed to copy. Please copy manually: ' + text );
+			alert( 'Failed to copy to clipboard. Please select and copy the key manually.' );
 		}
 
 		$temp.remove();
