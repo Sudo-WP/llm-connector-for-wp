@@ -137,6 +137,32 @@ class Admin_Interface {
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
+			<?php
+			// Display generated API key if available (with copy button).
+			if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
+				// Verify nonce to prevent URL manipulation.
+				if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
+					$api_key = get_transient( 'wp_llm_connector_new_key' );
+					if ( $api_key ) {
+						delete_transient( 'wp_llm_connector_new_key' );
+						?>
+						<div class="notice notice-success is-dismissible">
+							<p>
+								<strong><?php esc_html_e( 'API Key generated successfully:', 'wp-llm-connector' ); ?></strong>
+								<code id="wp-llm-generated-key"><?php echo esc_html( $api_key ); ?></code>
+								<button type="button" class="button button-small wp-llm-copy-key" data-key="<?php echo esc_attr( $api_key ); ?>" aria-label="<?php echo esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ); ?>">
+									<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
+								</button>
+								<br>
+								<em><?php esc_html_e( 'Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ); ?></em>
+							</p>
+						</div>
+						<?php
+					}
+				}
+			}
+			?>
+
 			<?php settings_errors( 'wp_llm_connector_messages' ); ?>
 
 			<div class="wp-llm-connector-admin-container">
@@ -241,28 +267,28 @@ class Admin_Interface {
 					<h2><?php esc_html_e( 'API Keys', 'wp-llm-connector' ); ?></h2>
 
 					<?php $this->render_api_keys_section( $settings ); ?>
-				</div>
 
-				<div class="wp-llm-connector-info">
-					<h2><?php esc_html_e( 'Connection Information', 'wp-llm-connector' ); ?></h2>
-					<div class="info-box">
-						<h3><?php esc_html_e( 'API Endpoint', 'wp-llm-connector' ); ?></h3>
-						<code><?php echo esc_html( rest_url( 'wp-llm-connector/v1/' ) ); ?></code>
+					<div class="wp-llm-connector-info">
+						<h2><?php esc_html_e( 'Connection Information', 'wp-llm-connector' ); ?></h2>
+						<div class="info-box">
+							<h3><?php esc_html_e( 'API Endpoint', 'wp-llm-connector' ); ?></h3>
+							<code><?php echo esc_html( rest_url( 'wp-llm-connector/v1/' ) ); ?></code>
 
-						<h3><?php esc_html_e( 'Usage Example (cURL)', 'wp-llm-connector' ); ?></h3>
-						<pre class="wp-llm-code-block">curl -H "X-WP-LLM-API-Key: YOUR_API_KEY" \
+							<h3><?php esc_html_e( 'Usage Example (cURL)', 'wp-llm-connector' ); ?></h3>
+							<pre class="wp-llm-code-block">curl -H "X-WP-LLM-API-Key: YOUR_API_KEY" \
      <?php echo esc_html( rest_url( 'wp-llm-connector/v1/site-info' ) ); ?></pre>
 
-						<h3><?php esc_html_e( 'Available Endpoints', 'wp-llm-connector' ); ?></h3>
-						<ul>
-							<li><code>/health</code> - <?php esc_html_e( 'Health check (no auth required)', 'wp-llm-connector' ); ?></li>
-							<li><code>/site-info</code> - <?php esc_html_e( 'Basic site information', 'wp-llm-connector' ); ?></li>
-							<li><code>/plugins</code> - <?php esc_html_e( 'List all plugins', 'wp-llm-connector' ); ?></li>
-							<li><code>/themes</code> - <?php esc_html_e( 'List all themes', 'wp-llm-connector' ); ?></li>
-							<li><code>/system-status</code> - <?php esc_html_e( 'System health and configuration', 'wp-llm-connector' ); ?></li>
-							<li><code>/user-count</code> - <?php esc_html_e( 'User statistics', 'wp-llm-connector' ); ?></li>
-							<li><code>/post-stats</code> - <?php esc_html_e( 'Content statistics', 'wp-llm-connector' ); ?></li>
-						</ul>
+							<h3><?php esc_html_e( 'Available Endpoints', 'wp-llm-connector' ); ?></h3>
+							<ul>
+								<li><code>/health</code> - <?php esc_html_e( 'Health check (no auth required)', 'wp-llm-connector' ); ?></li>
+								<li><code>/site-info</code> - <?php esc_html_e( 'Basic site information', 'wp-llm-connector' ); ?></li>
+								<li><code>/plugins</code> - <?php esc_html_e( 'List all plugins', 'wp-llm-connector' ); ?></li>
+								<li><code>/themes</code> - <?php esc_html_e( 'List all themes', 'wp-llm-connector' ); ?></li>
+								<li><code>/system-status</code> - <?php esc_html_e( 'System health and configuration', 'wp-llm-connector' ); ?></li>
+								<li><code>/user-count</code> - <?php esc_html_e( 'User statistics', 'wp-llm-connector' ); ?></li>
+								<li><code>/post-stats</code> - <?php esc_html_e( 'Content statistics', 'wp-llm-connector' ); ?></li>
+							</ul>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -289,55 +315,58 @@ class Admin_Interface {
 					<?php esc_html_e( 'Generate API Key', 'wp-llm-connector' ); ?>
 				</button>
 			</div>
+		</form>
 
-			<h3 class="wp-llm-existing-keys-title"><?php esc_html_e( 'Existing API Keys', 'wp-llm-connector' ); ?></h3>
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
+		<h3 class="wp-llm-existing-keys-title"><?php esc_html_e( 'Existing API Keys', 'wp-llm-connector' ); ?></h3>
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Key Name', 'wp-llm-connector' ); ?></th>
+					<th><?php esc_html_e( 'Key Prefix', 'wp-llm-connector' ); ?></th>
+					<th><?php esc_html_e( 'Created', 'wp-llm-connector' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'wp-llm-connector' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'wp-llm-connector' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $api_keys ) ) : ?>
 					<tr>
-						<th><?php esc_html_e( 'Key Name', 'wp-llm-connector' ); ?></th>
-						<th><?php esc_html_e( 'Key Prefix', 'wp-llm-connector' ); ?></th>
-						<th><?php esc_html_e( 'Created', 'wp-llm-connector' ); ?></th>
-						<th><?php esc_html_e( 'Status', 'wp-llm-connector' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'wp-llm-connector' ); ?></th>
+						<td colspan="5" class="wp-llm-empty-keys">
+							<?php esc_html_e( 'No API keys generated yet. Create one using the form above.', 'wp-llm-connector' ); ?>
+						</td>
 					</tr>
-				</thead>
-				<tbody>
-					<?php if ( empty( $api_keys ) ) : ?>
+				<?php else : ?>
+					<?php foreach ( $api_keys as $key_id => $key_data ) : ?>
 						<tr>
-							<td colspan="5" class="wp-llm-empty-keys">
-								<?php esc_html_e( 'No API keys generated yet. Create one using the form above.', 'wp-llm-connector' ); ?>
+							<td><?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?></td>
+							<td>
+								<code class="api-key-display">
+									<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
+								</code>
 							</td>
-						</tr>
-					<?php else : ?>
-						<?php foreach ( $api_keys as $key_id => $key_data ) : ?>
-							<tr>
-								<td><?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?></td>
-								<td>
-									<code class="api-key-display">
-										<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
-									</code>
-								</td>
-								<td><?php echo esc_html( wp_date( 'Y-m-d H:i', $key_data['created'] ?? time() ) ); ?></td>
-								<td>
-									<?php if ( $key_data['active'] ?? true ) : ?>
-										<span class="status-active"><?php esc_html_e( 'Active', 'wp-llm-connector' ); ?></span>
-									<?php else : ?>
-										<span class="status-inactive"><?php esc_html_e( 'Inactive', 'wp-llm-connector' ); ?></span>
-									<?php endif; ?>
-								</td>
-								<td>
+							<td><?php echo esc_html( wp_date( 'Y-m-d H:i', $key_data['created'] ?? time() ) ); ?></td>
+							<td>
+								<?php if ( $key_data['active'] ?? true ) : ?>
+									<span class="status-active"><?php esc_html_e( 'Active', 'wp-llm-connector' ); ?></span>
+								<?php else : ?>
+									<span class="status-inactive"><?php esc_html_e( 'Inactive', 'wp-llm-connector' ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td>
+								<form method="post" action="" style="display: inline;">
+									<?php wp_nonce_field( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ); ?>
 									<button type="submit" name="revoke_key" value="<?php echo esc_attr( $key_id ); ?>"
 										class="button button-small button-link-delete"
 										onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to revoke this API key?', 'wp-llm-connector' ) ); ?>');">
 										<?php esc_html_e( 'Revoke', 'wp-llm-connector' ); ?>
 									</button>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				</tbody>
-			</table>
-		</form>
+								</form>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
 
 		<?php
 	}
@@ -357,9 +386,35 @@ class Admin_Interface {
 		// Generate new key.
 		if ( isset( $_POST['generate_key'] ) && check_admin_referer( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ) ) {
 			$key_name = sanitize_text_field( wp_unslash( $_POST['key_name'] ?? 'Unnamed' ) );
+			
+			// Check if key name already exists.
+			$settings = get_option( 'wp_llm_connector_settings', array() );
+			$existing_keys = $settings['api_keys'] ?? array();
+			$name_exists = false;
+			
+			foreach ( $existing_keys as $existing_key ) {
+				if ( isset( $existing_key['name'] ) && $existing_key['name'] === $key_name ) {
+					$name_exists = true;
+					break;
+				}
+			}
+			
+			if ( $name_exists ) {
+				add_settings_error(
+					'wp_llm_connector_messages',
+					'duplicate_key_name',
+					sprintf(
+						/* translators: %s: the duplicate key name */
+						__( 'An API key with the name "%s" already exists. Please use a unique name.', 'wp-llm-connector' ),
+						esc_html( $key_name )
+					),
+					'error'
+				);
+				return;
+			}
+			
 			$api_key  = \WP_LLM_Connector\Security\Security_Manager::generate_api_key();
 
-			$settings             = get_option( 'wp_llm_connector_settings', array() );
 			$settings['api_keys'] = $settings['api_keys'] ?? array();
 
 			$key_id                          = wp_generate_uuid4();
@@ -400,37 +455,6 @@ class Admin_Interface {
 					'key_generation_failed',
 					__( 'Failed to save API key. Please try again.', 'wp-llm-connector' ),
 					'error'
-				);
-			}
-		}
-
-		// Show the generated key after redirect.
-		if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
-			// Verify nonce to prevent URL manipulation.
-			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
-				return;
-			}
-
-			$api_key = get_transient( 'wp_llm_connector_new_key' );
-			if ( $api_key ) {
-				delete_transient( 'wp_llm_connector_new_key' );
-				
-				// Build the message with the copy button outside of the translatable string.
-				$message = sprintf(
-					/* translators: %s: the generated API key */
-					__( 'API Key generated successfully: %s', 'wp-llm-connector' ),
-					'<code id="wp-llm-generated-key">' . esc_html( $api_key ) . '</code>'
-				);
-				
-				$message .= ' <button type="button" class="button button-small wp-llm-copy-key" data-key="' . esc_attr( $api_key ) . '" aria-label="' . esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ) . '">' . esc_html__( 'Copy', 'wp-llm-connector' ) . '</button> ';
-				
-				$message .= __( '— Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' );
-				
-				add_settings_error(
-					'wp_llm_connector_messages',
-					'key_generated',
-					$message,
-					'success'
 				);
 			}
 		}
