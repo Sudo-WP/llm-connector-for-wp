@@ -311,13 +311,17 @@ class Admin_Interface {
 				'active'     => true,
 			);
 
-			$updated = update_option( 'wp_llm_connector_settings', $settings );
-
-			if ( $updated ) {
-				// Store the generated key in a transient so we can show it after redirect.
+			// Update the option. WordPress update_option() returns false if the value hasn't changed,
+			// but since we're adding a new key with a unique ID, this should always succeed.
+			update_option( 'wp_llm_connector_settings', $settings );
+			
+			// Verify the key was actually saved by reading it back.
+			$verified_settings = get_option( 'wp_llm_connector_settings', array() );
+			if ( isset( $verified_settings['api_keys'][ $key_id ] ) ) {
+				// Success! Store the generated key in a transient so we can show it after redirect.
 				set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
 				
-				// Redirect to avoid form resubmission and ensure fresh data load.
+				// Redirect to show the key.
 				$redirect_url = add_query_arg(
 					array(
 						'page'          => 'wp-llm-connector',
@@ -329,6 +333,7 @@ class Admin_Interface {
 				wp_safe_redirect( $redirect_url );
 				exit;
 			} else {
+				// Key was not saved properly.
 				add_settings_error(
 					'wp_llm_connector_messages',
 					'key_generation_failed',
@@ -368,10 +373,14 @@ class Admin_Interface {
 			$settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $settings['api_keys'][ $key_id ] ) ) {
 				unset( $settings['api_keys'][ $key_id ] );
-				$updated = update_option( 'wp_llm_connector_settings', $settings );
-
-				if ( $updated ) {
-					// Redirect to avoid form resubmission.
+				
+				// Update the option.
+				update_option( 'wp_llm_connector_settings', $settings );
+				
+				// Verify the key was actually removed by reading it back.
+				$verified_settings = get_option( 'wp_llm_connector_settings', array() );
+				if ( ! isset( $verified_settings['api_keys'][ $key_id ] ) ) {
+					// Success! Redirect to show confirmation.
 					$redirect_url = add_query_arg(
 						array(
 							'page'        => 'wp-llm-connector',
