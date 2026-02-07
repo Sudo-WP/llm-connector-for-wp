@@ -14,7 +14,8 @@ Requirements:
     - requests library: pip install requests
 
 Usage:
-    python mcp_integration_example.py
+    1. Replace WORDPRESS_URL and API_KEY below with your actual values
+    2. Run: python mcp_integration_example.py
 """
 
 import json
@@ -206,11 +207,10 @@ def main():
     
     print("\n✅ Setup complete!")
     print("\nNext steps:")
-    print("1. Ensure you've set the correct WordPress URL and API key (from WordPress admin) in this script")
-    print("2. Restart Claude Code to load the new configuration")
-    print("3. In Claude Code, you can now use WordPress diagnostics tools")
-    print("4. Try: 'Run a WordPress security audit on my site'")
-    print("5. Or: 'Check the system status of my WordPress site'")
+    print("1. Restart Claude Code to load the new configuration")
+    print("2. In Claude Code, you can now use WordPress diagnostics tools")
+    print("3. Try: 'Run a WordPress security audit on my site'")
+    print("4. Or: 'Check the system status of my WordPress site'")
     
     print("\n📚 Available tools:")
     for tool in mcp_server._generate_tools():
