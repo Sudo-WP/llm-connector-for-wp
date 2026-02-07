@@ -28,6 +28,30 @@ jQuery( document ).ready( function( $ ) {
 		}
 	} );
 
+	// Reveal/Hide API key functionality.
+	$( document ).on( 'click', '.wp-llm-reveal-key', function( e ) {
+		e.preventDefault();
+		var $button = $( this );
+		var $keyElement = $( '#wp-llm-generated-key' );
+		var apiKey = $button.data( 'key' );
+		
+		// Check if wpLlmConnector is defined.
+		if ( typeof wpLlmConnector === 'undefined' ) {
+			console.error( 'wpLlmConnector is not defined' );
+			return;
+		}
+
+		if ( $keyElement.hasClass( 'wp-llm-api-key-hidden' ) ) {
+			// Reveal the key.
+			$keyElement.removeClass( 'wp-llm-api-key-hidden' ).addClass( 'wp-llm-api-key-revealed' ).text( apiKey ).attr( 'title', wpLlmConnector.i18n.revealedKeyTitle );
+			$button.text( wpLlmConnector.i18n.hideText ).attr( 'aria-label', wpLlmConnector.i18n.hideKeyLabel );
+		} else {
+			// Hide the key.
+			$keyElement.removeClass( 'wp-llm-api-key-revealed' ).addClass( 'wp-llm-api-key-hidden' ).text( '••••••••••••••••••••••••••••••••' ).attr( 'title', wpLlmConnector.i18n.hiddenKeyTitle );
+			$button.text( wpLlmConnector.i18n.revealText ).attr( 'aria-label', wpLlmConnector.i18n.revealKeyLabel );
+		}
+	} );
+
 	// Copy API key to clipboard.
 	$( document ).on( 'click', '.wp-llm-copy-key', function( e ) {
 		e.preventDefault();
