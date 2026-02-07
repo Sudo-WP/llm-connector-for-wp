@@ -1,4 +1,4 @@
-# LLM Connector for WordPress Self-Hosted Websites
+# LLM Connector for WordPress
 
 **Version:** 0.1.0 (MVP)  
 **Author:** SudoWP.com  
