@@ -309,7 +309,7 @@ class Admin_Interface {
 		<?php
 	}
 
-	private function handle_api_key_actions() {
+	public function handle_api_key_actions() {
 		// Only handle actions on our settings page.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
