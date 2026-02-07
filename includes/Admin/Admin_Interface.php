@@ -241,7 +241,7 @@ class Admin_Interface {
 				</button>
 			</div>
 
-			<h3 style="margin-top: 30px;"><?php esc_html_e( 'Existing API Keys', 'wp-llm-connector' ); ?></h3>
+			<h3 class="wp-llm-existing-keys-title"><?php esc_html_e( 'Existing API Keys', 'wp-llm-connector' ); ?></h3>
 			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>

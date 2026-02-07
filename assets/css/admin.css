@@ -84,7 +84,13 @@
 
 /* Generate key section — replaces inline style */
 .wp-llm-generate-key {
-	margin-top: 20px;
+	margin-top: 0;
+	margin-bottom: 30px;
+}
+
+/* Existing keys title */
+.wp-llm-existing-keys-title {
+	margin-top: 30px;
 }
 
 /* Code block — replaces inline style */
