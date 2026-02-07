@@ -56,23 +56,25 @@ jQuery( document ).ready( function( $ ) {
 	// Fallback copy method for older browsers.
 	function fallbackCopyToClipboard( text, $button, originalText ) {
 		var $temp = $( '<textarea>' );
+		var success = false;
+		
 		$( 'body' ).append( $temp );
 		$temp.val( text ).select();
 
 		try {
-			var success = document.execCommand( 'copy' );
-			if ( success ) {
-				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
-				setTimeout( function() {
-					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
-				}, 2000 );
-				$temp.remove();
-			} else {
-				$temp.remove();
-				alert( wpLlmConnector.i18n.copyError );
-			}
+			success = document.execCommand( 'copy' );
 		} catch ( err ) {
-			$temp.remove();
+			success = false;
+		}
+
+		$temp.remove();
+
+		if ( success ) {
+			$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+			setTimeout( function() {
+				$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+			}, 2000 );
+		} else {
 			alert( wpLlmConnector.i18n.copyError );
 		}
 	}
