@@ -1,4 +1,4 @@
-=== LLM Connector for WordPress Self-Hosted Websites ===
+=== LLM Connector for WordPress ===
 Contributors: SudoWP, WP Republic
 Tags: llm, ai, api, rest-api, diagnostics
 Requires at least: 5.8
