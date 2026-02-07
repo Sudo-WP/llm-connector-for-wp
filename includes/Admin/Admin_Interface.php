@@ -311,9 +311,6 @@ class Admin_Interface {
 				'active'     => true,
 			);
 
-			// Store the generated key in a transient so we can show it after redirect.
-			set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
-			
 			// Update the option. WordPress update_option() returns false if the value hasn't changed,
 			// but since we're adding a new key with a unique ID, this should always succeed.
 			update_option( 'wp_llm_connector_settings', $settings );
@@ -321,7 +318,10 @@ class Admin_Interface {
 			// Verify the key was actually saved by reading it back.
 			$verified_settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $verified_settings['api_keys'][ $key_id ] ) ) {
-				// Success! Redirect to show the key.
+				// Success! Store the generated key in a transient so we can show it after redirect.
+				set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
+				
+				// Redirect to show the key.
 				$redirect_url = add_query_arg(
 					array(
 						'page'          => 'wp-llm-connector',
@@ -334,7 +334,6 @@ class Admin_Interface {
 				exit;
 			} else {
 				// Key was not saved properly.
-				delete_transient( 'wp_llm_connector_new_key' );
 				add_settings_error(
 					'wp_llm_connector_messages',
 					'key_generation_failed',
