@@ -145,7 +145,8 @@
 	cursor: pointer;
 }
 
-/* Responsive table styling */
+/* Responsive table styling for mobile devices */
+/* 782px breakpoint matches WordPress admin responsive breakpoint */
 @media screen and (max-width: 782px) {
 	.wp-llm-connector-api-keys table {
 		font-size: 14px;
