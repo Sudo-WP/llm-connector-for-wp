@@ -386,19 +386,19 @@ class Admin_Interface {
 		// Generate new key.
 		if ( isset( $_POST['generate_key'] ) && check_admin_referer( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ) ) {
 			$key_name = sanitize_text_field( wp_unslash( $_POST['key_name'] ?? 'Unnamed' ) );
-			
+
 			// Check if key name already exists.
 			$settings = get_option( 'wp_llm_connector_settings', array() );
 			$existing_keys = $settings['api_keys'] ?? array();
 			$name_exists = false;
-			
+
 			foreach ( $existing_keys as $existing_key ) {
 				if ( isset( $existing_key['name'] ) && $existing_key['name'] === $key_name ) {
 					$name_exists = true;
 					break;
 				}
 			}
-			
+
 			if ( $name_exists ) {
 				add_settings_error(
 					'wp_llm_connector_messages',
@@ -412,7 +412,7 @@ class Admin_Interface {
 				);
 				return;
 			}
-			
+
 			$api_key  = \WP_LLM_Connector\Security\Security_Manager::generate_api_key();
 
 			$settings['api_keys'] = $settings['api_keys'] ?? array();
