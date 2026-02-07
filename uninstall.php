@@ -26,8 +26,11 @@ if ( ! $preserve_settings ) {
 	$table_name = $wpdb->prefix . 'llm_connector_audit_log';
 	
 	// Validate table name format before executing DROP query.
+	// Using direct query with backticks for WordPress 5.8+ compatibility.
+	// WordPress 6.2+ supports %i placeholder, but we need to support 5.8+.
+	// Validation: Only alphanumeric and underscore, max 64 chars (MySQL limit).
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
-	if ( preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) ) {
+	if ( preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) && strlen( $table_name ) <= 64 ) {
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table_name}`" );
 	}
 

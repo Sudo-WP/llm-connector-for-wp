@@ -173,6 +173,7 @@
 }
 
 /* Desktop layout - 2 column grid for larger screens */
+/* Breakpoint at 1201px means desktop layout applies when width > 1200px */
 @media screen and (min-width: 1201px) {
 	.wp-llm-connector-admin-container {
 		grid-template-columns: 2fr 1fr;
