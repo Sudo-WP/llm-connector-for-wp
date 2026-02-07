@@ -6,6 +6,7 @@ class Admin_Interface {
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_init', array( $this, 'handle_api_key_actions' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
 
@@ -84,9 +85,6 @@ class Admin_Interface {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-
-		// Handle API key actions.
-		$this->handle_api_key_actions();
 
 		$settings            = get_option( 'wp_llm_connector_settings', array() );
 		$available_endpoints = array(
@@ -294,6 +292,17 @@ class Admin_Interface {
 	}
 
 	private function handle_api_key_actions() {
+		// Only handle actions on our settings page.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Only process on our admin page.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified later when processing forms.
+		if ( ! isset( $_GET['page'] ) || 'wp-llm-connector' !== $_GET['page'] ) {
+			return;
+		}
+
 		// Generate new key.
 		if ( isset( $_POST['generate_key'] ) && check_admin_referer( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ) ) {
 			$key_name = sanitize_text_field( wp_unslash( $_POST['key_name'] ?? 'Unnamed' ) );
@@ -319,7 +328,8 @@ class Admin_Interface {
 			$verified_settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $verified_settings['api_keys'][ $key_id ] ) ) {
 				// Success! Store the generated key in a transient so we can show it after redirect.
-				set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
+				// Use a 5-minute expiration to give users time to see the key.
+				set_transient( 'wp_llm_connector_new_key', $api_key, 300 );
 				
 				// Redirect to show the key.
 				$redirect_url = add_query_arg(
