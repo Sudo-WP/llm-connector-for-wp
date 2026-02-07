@@ -4,15 +4,15 @@ Tags: llm, ai, api, rest-api, diagnostics
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect your WordPress site to LLM agents for secure, read-only diagnostics and administration.
+Connect your WordPress site to LLM agents for secure, read-only diagnostics and administration. Currently supports Claude Code LLM with more LLMs coming in future versions.
 
 == Description ==
 
-LLM Connector for WordPress Self-Hosted Websites creates a secure REST API bridge between your WordPress site and Large Language Model agents such as Claude, GPT, and other AI assistants. It enables LLMs to read site diagnostics, plugin and theme inventories, system status, and content statistics through authenticated, rate-limited endpoints.
+LLM Connector for WordPress Self-Hosted Websites creates a secure REST API bridge between your WordPress site and Large Language Model agents such as Claude Code and other AI assistants. Currently supports Claude Code LLM with more LLMs coming in future versions. It enables LLMs to read site diagnostics, plugin and theme inventories, system status, and content statistics through authenticated, rate-limited endpoints.
 
 **Key Features:**
 
@@ -73,6 +73,12 @@ All plugin settings, API keys, and audit logs are permanently deleted when the p
 
 == Changelog ==
 
+= 0.1.1 =
+* Added: Display the path of the audit log database table in the settings
+* Added: Purge log button to clear all audit log entries
+* Improved: Updated logging description for better clarity
+* Updated: Documentation to mention Claude Code LLM support with more LLMs coming in future versions
+
 = 0.1.0 =
 * Initial release.
 * REST API endpoints for site info, plugins, themes, system status, user count, and post stats.
@@ -85,6 +91,9 @@ All plugin settings, API keys, and audit logs are permanently deleted when the p
 * Admin settings page under Settings > LLM Connector.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Added purge log feature and improved documentation. Now clearly states support for Claude Code LLM with more LLMs coming in future versions.
 
 = 0.1.0 =
 Initial release. Generate a new API key after installation.

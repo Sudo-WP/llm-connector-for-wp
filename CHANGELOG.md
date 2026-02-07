@@ -5,6 +5,18 @@ All notable changes to the WP LLM Connector plugin will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-02-07
+
+### Added
+- Display the path of the audit log database table in the settings page
+- Purge log button to clear all audit log entries with confirmation dialog
+- Shows the number of log entries in the purge button
+
+### Changed
+- Improved logging description: changed "Log all API requests Keep an audit trail of all LLM access" to "Log all API requests. Keep an audit trail of all LLM access." (added period for better clarity)
+- Updated plugin description to mention Claude Code LLM support with more LLMs coming in future versions
+- Updated all documentation files (readme.txt, README.md) to reflect Claude Code LLM support
+
 ## [0.1.0] - 2025-02-07
 
 ### Added - Initial MVP Release
