@@ -12,11 +12,15 @@ https://yoursite.com/wp-json/wp-llm-connector/v1/
 
 All endpoints (except `/health`) require authentication via API key.
 
+**Important:** The API key is generated in your WordPress admin (Settings > LLM Connector) and then used by LLM services (like Claude, GPT) to authenticate when making requests to your WordPress site. You do NOT need to create this key in Claude or other LLM provider services.
+
 ### Header Format
 
 ```
 X-WP-LLM-API-Key: wpllm_your_64_character_api_key_here
 ```
+
+Use the API key you generated in WordPress admin in the `X-WP-LLM-API-Key` header for all authenticated requests.
 
 ### Example Request
 
@@ -386,6 +390,8 @@ getSiteInfo();
 ## MCP Configuration
 
 For use with Claude Code or other MCP-compatible tools:
+
+**Important:** Replace `wpllm_your_api_key_here` with the actual API key you generated in WordPress (Settings > LLM Connector). This is NOT a Claude/Anthropic API key.
 
 ```json
 {

@@ -47,7 +47,7 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 2. Upload the `wp-llm-connector` folder to `/wp-content/plugins/`
 3. Activate the plugin through the WordPress admin
 4. Navigate to **Settings > LLM Connector**
-5. Generate an API key
+5. Generate an API key (this key will be used by LLM services to authenticate with your WordPress site)
 6. Configure your allowed endpoints
 
 ### Requirements
@@ -68,19 +68,24 @@ Navigate to **Settings > LLM Connector** and:
 
 ### 2. Generate an API Key
 
+In this step, you'll create an API key that LLM services (like Claude) will use to authenticate when connecting to your WordPress site.
+
 1. Scroll to the "API Keys" section
-2. Enter a name for your key (e.g., "Claude Production")
+2. Enter a descriptive name for your key (e.g., "Claude Production")
 3. Click "Generate API Key"
 4. **Copy and save the key immediately** - it will be partially hidden after you leave the page
+5. You'll use this key in step 3 to configure your LLM client
 
 ### 3. Test the Connection
 
-Use cURL to test:
+Use the API key you generated in step 2 to test the connection with cURL:
 
 ```bash
 curl -H "X-WP-LLM-API-Key: wpllm_your_api_key_here" \
      https://yoursite.com/wp-json/wp-llm-connector/v1/site-info
 ```
+
+Replace `wpllm_your_api_key_here` with the actual API key you copied from WordPress.
 
 ## Available Endpoints
 
@@ -130,11 +135,13 @@ Returns content statistics for all post types.
 
 ## Connecting to Claude Code
 
-To use this plugin with Claude Code, you can create an MCP server configuration:
+To use this plugin with Claude Code, you need to configure Claude to use the API key you generated in WordPress.
+
+**Important:** You do NOT need to generate an API key in Claude or Anthropic. The API key is generated in your WordPress admin and then provided to Claude for authentication.
 
 ### Option 1: Manual Configuration
 
-Add to your Claude Code MCP settings:
+Add to your Claude Code MCP settings, using the API key you generated in WordPress (step 2):
 
 ```json
 {
@@ -150,6 +157,8 @@ Add to your Claude Code MCP settings:
   }
 }
 ```
+
+Replace `wpllm_your_api_key_here` with the actual API key from your WordPress LLM Connector settings.
 
 ### Option 2: Provider Integration (Future)
 

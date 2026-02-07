@@ -4,8 +4,10 @@
 # This script tests all available endpoints
 
 # Configuration
+# IMPORTANT: Replace these values with your actual WordPress site URL and the API key
+# you generated in WordPress (Settings > LLM Connector). This is NOT a Claude API key.
 WORDPRESS_URL="https://yoursite.com"
-API_KEY="wpllm_your_api_key_here"
+API_KEY="wpllm_your_api_key_here"  # Use the API key from WordPress admin
 BASE_URL="${WORDPRESS_URL}/wp-json/wp-llm-connector/v1"
 
 # Colors for output
@@ -16,7 +18,7 @@ NC='\033[0m' # No Color
 
 # Check configuration
 if [ "$API_KEY" == "wpllm_your_api_key_here" ]; then
-    echo -e "${RED}Error: Please set your API_KEY in the script${NC}"
+    echo -e "${RED}Error: Please set your API_KEY (from WordPress Settings > LLM Connector) in the script${NC}"
     exit 1
 fi
 
