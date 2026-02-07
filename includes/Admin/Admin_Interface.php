@@ -44,9 +44,27 @@ class Admin_Interface {
 			? array_map( 'sanitize_text_field', $input['allowed_endpoints'] )
 			: array();
 
-		// Preserve existing API keys (managed separately).
-		$current_settings          = get_option( 'wp_llm_connector_settings', array() );
-		$sanitized['api_keys']     = $current_settings['api_keys'] ?? array();
+		// Preserve existing API keys if not provided in input (form submissions don't include them).
+		// If api_keys are in the input, use them (programmatic updates via handle_api_key_actions).
+		if ( isset( $input['api_keys'] ) && is_array( $input['api_keys'] ) ) {
+			// Sanitize each API key entry for security.
+			$api_keys = array();
+			foreach ( $input['api_keys'] as $key_id => $key_data ) {
+				if ( is_array( $key_data ) ) {
+					$api_keys[ sanitize_text_field( $key_id ) ] = array(
+						'name'       => isset( $key_data['name'] ) ? sanitize_text_field( $key_data['name'] ) : '',
+						'key_hash'   => isset( $key_data['key_hash'] ) ? sanitize_text_field( $key_data['key_hash'] ) : '',
+						'key_prefix' => isset( $key_data['key_prefix'] ) ? sanitize_text_field( $key_data['key_prefix'] ) : '',
+						'created'    => isset( $key_data['created'] ) ? absint( $key_data['created'] ) : 0,
+						'active'     => isset( $key_data['active'] ) ? (bool) $key_data['active'] : true,
+					);
+				}
+			}
+			$sanitized['api_keys'] = $api_keys;
+		} else {
+			$current_settings      = get_option( 'wp_llm_connector_settings', array() );
+			$sanitized['api_keys'] = $current_settings['api_keys'] ?? array();
+		}
 
 		return $sanitized;
 	}
