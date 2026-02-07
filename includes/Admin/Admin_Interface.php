@@ -353,7 +353,7 @@ class Admin_Interface {
 								<?php endif; ?>
 							</td>
 							<td>
-								<form method="post" action="" style="display: inline;">
+								<form method="post" action="" class="wp-llm-inline-form">
 									<?php wp_nonce_field( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ); ?>
 									<button type="submit" name="revoke_key" value="<?php echo esc_attr( $key_id ); ?>"
 										class="button button-small button-link-delete"

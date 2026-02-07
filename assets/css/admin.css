@@ -149,6 +149,12 @@
 	cursor: pointer;
 }
 
+/* Inline form for revoke buttons */
+.wp-llm-inline-form {
+	display: inline;
+	margin: 0;
+}
+
 /* Responsive table styling for mobile devices */
 /* 782px breakpoint matches WordPress admin responsive breakpoint */
 @media screen and (max-width: 782px) {
