@@ -228,6 +228,20 @@ class Admin_Interface {
 		<form method="post" action="">
 			<?php wp_nonce_field( 'wp_llm_connector_generate_key', 'wp_llm_connector_key_nonce' ); ?>
 
+			<div class="wp-llm-generate-key">
+				<h3><?php esc_html_e( 'Generate New API Key', 'wp-llm-connector' ); ?></h3>
+				<p class="description">
+					<?php esc_html_e( 'Generate an API key that LLM services (like Claude) will use to authenticate with your WordPress site.', 'wp-llm-connector' ); ?>
+				</p>
+				<input type="text" name="key_name"
+					placeholder="<?php echo esc_attr__( 'Key name (e.g., Claude Production)', 'wp-llm-connector' ); ?>"
+					class="regular-text" required>
+				<button type="submit" name="generate_key" class="button button-primary">
+					<?php esc_html_e( 'Generate API Key', 'wp-llm-connector' ); ?>
+				</button>
+			</div>
+
+			<h3 class="wp-llm-existing-keys-title"><?php esc_html_e( 'Existing API Keys', 'wp-llm-connector' ); ?></h3>
 			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>
@@ -242,7 +256,7 @@ class Admin_Interface {
 					<?php if ( empty( $api_keys ) ) : ?>
 						<tr>
 							<td colspan="5" class="wp-llm-empty-keys">
-								<?php esc_html_e( 'No API keys generated yet. Create one below to get started.', 'wp-llm-connector' ); ?>
+								<?php esc_html_e( 'No API keys generated yet. Create one using the form above.', 'wp-llm-connector' ); ?>
 							</td>
 						</tr>
 					<?php else : ?>
@@ -274,19 +288,6 @@ class Admin_Interface {
 					<?php endif; ?>
 				</tbody>
 			</table>
-
-			<div class="wp-llm-generate-key">
-				<h3><?php esc_html_e( 'Generate New API Key', 'wp-llm-connector' ); ?></h3>
-				<p class="description">
-					<?php esc_html_e( 'Generate an API key that LLM services (like Claude) will use to authenticate with your WordPress site.', 'wp-llm-connector' ); ?>
-				</p>
-				<input type="text" name="key_name"
-					placeholder="<?php echo esc_attr__( 'Key name (e.g., Claude Production)', 'wp-llm-connector' ); ?>"
-					class="regular-text" required>
-				<button type="submit" name="generate_key" class="button button-primary">
-					<?php esc_html_e( 'Generate API Key', 'wp-llm-connector' ); ?>
-				</button>
-			</div>
 		</form>
 
 		<?php
@@ -310,18 +311,54 @@ class Admin_Interface {
 				'active'     => true,
 			);
 
-			update_option( 'wp_llm_connector_settings', $settings );
+			$updated = update_option( 'wp_llm_connector_settings', $settings );
 
-			add_settings_error(
-				'wp_llm_connector_messages',
-				'key_generated',
-				sprintf(
-					/* translators: %s: the generated API key */
-					__( 'API Key generated successfully: %s — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
-					'<code>' . esc_html( $api_key ) . '</code>'
-				),
-				'success'
-			);
+			if ( $updated ) {
+				// Store the generated key in a transient so we can show it after redirect.
+				set_transient( 'wp_llm_connector_new_key', $api_key, 60 );
+				
+				// Redirect to avoid form resubmission and ensure fresh data load.
+				$redirect_url = add_query_arg(
+					array(
+						'page'          => 'wp-llm-connector',
+						'key_generated' => '1',
+						'_wpnonce'      => wp_create_nonce( 'wp_llm_connector_key_generated' ),
+					),
+					admin_url( 'options-general.php' )
+				);
+				wp_safe_redirect( $redirect_url );
+				exit;
+			} else {
+				add_settings_error(
+					'wp_llm_connector_messages',
+					'key_generation_failed',
+					__( 'Failed to save API key. Please try again.', 'wp-llm-connector' ),
+					'error'
+				);
+			}
+		}
+
+		// Show the generated key after redirect.
+		if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
+			// Verify nonce to prevent URL manipulation.
+			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
+				return;
+			}
+
+			$api_key = get_transient( 'wp_llm_connector_new_key' );
+			if ( $api_key ) {
+				delete_transient( 'wp_llm_connector_new_key' );
+				add_settings_error(
+					'wp_llm_connector_messages',
+					'key_generated',
+					sprintf(
+						/* translators: %s: the generated API key */
+						__( 'API Key generated successfully: %s — Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ),
+						'<code>' . esc_html( $api_key ) . '</code>'
+					),
+					'success'
+				);
+			}
 		}
 
 		// Revoke key.
@@ -331,15 +368,44 @@ class Admin_Interface {
 			$settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $settings['api_keys'][ $key_id ] ) ) {
 				unset( $settings['api_keys'][ $key_id ] );
-				update_option( 'wp_llm_connector_settings', $settings );
+				$updated = update_option( 'wp_llm_connector_settings', $settings );
 
-				add_settings_error(
-					'wp_llm_connector_messages',
-					'key_revoked',
-					__( 'API Key revoked successfully.', 'wp-llm-connector' ),
-					'success'
-				);
+				if ( $updated ) {
+					// Redirect to avoid form resubmission.
+					$redirect_url = add_query_arg(
+						array(
+							'page'        => 'wp-llm-connector',
+							'key_revoked' => '1',
+							'_wpnonce'    => wp_create_nonce( 'wp_llm_connector_key_revoked' ),
+						),
+						admin_url( 'options-general.php' )
+					);
+					wp_safe_redirect( $redirect_url );
+					exit;
+				} else {
+					add_settings_error(
+						'wp_llm_connector_messages',
+						'key_revocation_failed',
+						__( 'Failed to revoke API key. Please try again.', 'wp-llm-connector' ),
+						'error'
+					);
+				}
 			}
+		}
+
+		// Show revocation success message after redirect.
+		if ( isset( $_GET['key_revoked'] ) && $_GET['key_revoked'] === '1' ) {
+			// Verify nonce to prevent URL manipulation.
+			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_revoked' ) ) {
+				return;
+			}
+
+			add_settings_error(
+				'wp_llm_connector_messages',
+				'key_revoked',
+				__( 'API Key revoked successfully.', 'wp-llm-connector' ),
+				'success'
+			);
 		}
 	}
 }
