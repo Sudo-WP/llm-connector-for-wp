@@ -403,10 +403,34 @@ class Admin_Interface {
 						<tr>
 							<td><?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?></td>
 							<td>
-								<code class="api-key-display">
-									<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
-								</code>
-							</td>
+	<div class="wp-llm-key-container">
+		<code class="api-key-display wp-llm-api-key-hidden" 
+			id="wp-llm-key-<?php echo esc_attr( $key_id ); ?>"
+			data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..." 
+			title="<?php echo esc_attr__( 'Full key is hidden for security', 'wp-llm-connector' ); ?>">
+			<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
+		</code>
+		<button type="button" 
+			class="button button-small wp-llm-reveal-key" 
+			data-key-id="<?php echo esc_attr( $key_id ); ?>"
+			data-key="••••••••••••••••••••••••••••••••"
+			aria-label="<?php echo esc_attr__( 'Reveal key (not available for existing keys)', 'wp-llm-connector' ); ?>"
+			disabled
+			title="<?php echo esc_attr__( 'Full keys cannot be retrieved after generation', 'wp-llm-connector' ); ?>">
+			<span class="dashicons dashicons-visibility"></span>
+			<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
+		</button>
+		<button type="button" 
+			class="button button-small wp-llm-copy-key" 
+			data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..."
+			aria-label="<?php echo esc_attr__( 'Copy key prefix only', 'wp-llm-connector' ); ?>"
+			disabled
+			title="<?php echo esc_attr__( 'Full keys cannot be copied after generation', 'wp-llm-connector' ); ?>">
+			<span class="dashicons dashicons-clipboard"></span>
+			<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
+		</button>
+	</div>
+</td>
 							<td><?php echo esc_html( wp_date( 'Y-m-d H:i', $key_data['created'] ?? time() ) ); ?></td>
 							<td>
 								<?php if ( $key_data['active'] ?? true ) : ?>

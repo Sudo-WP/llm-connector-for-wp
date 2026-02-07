@@ -234,3 +234,174 @@
 		grid-row: 1;
 	}
 }
+/* ========================================
+   API Key Reveal Feature Enhancements
+   ======================================== */
+
+/* API key container */
+.wp-llm-key-container {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+/* Enhanced API key display */
+.api-key-display {
+	font-family: 'Courier New', Courier, monospace;
+	background: #f8f9fa;
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 13px;
+	border: 1px solid #ddd;
+	transition: all 0.2s ease;
+	user-select: none;
+	min-width: 180px;
+}
+
+.api-key-display:hover {
+	background: #e9ecef;
+	border-color: #adb5bd;
+}
+
+/* Hidden state (default) */
+.wp-llm-api-key-hidden {
+	letter-spacing: 2px;
+	color: #495057;
+	cursor: default;
+}
+
+/* Revealed state */
+.wp-llm-api-key-revealed {
+	user-select: all;
+	cursor: text;
+	background: #fff8e1;
+	border-color: #ffc107;
+	letter-spacing: 0.5px;
+	color: #000;
+	animation: revealPulse 0.3s ease;
+}
+
+.wp-llm-api-key-revealed:hover {
+	background: #fff3cd;
+	border-color: #ff9800;
+	outline: 2px solid #ffc107;
+	outline-offset: 1px;
+}
+
+@keyframes revealPulse {
+	0% { opacity: 0; transform: scale(0.98); }
+	100% { opacity: 1; transform: scale(1); }
+}
+
+/* Reveal button styling with dashicons */
+.wp-llm-reveal-key,
+.wp-llm-copy-key {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	height: auto;
+	line-height: 1.4;
+	font-size: 13px;
+	transition: all 0.2s ease;
+}
+
+.wp-llm-reveal-key .dashicons,
+.wp-llm-copy-key .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	margin-top: -2px;
+}
+
+/* Reveal button states */
+.wp-llm-reveal-key:not(:disabled):hover {
+	background: #f0f0f1;
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.wp-llm-reveal-key.revealed {
+	background: #2271b1;
+	color: #fff;
+	border-color: #135e96;
+}
+
+.wp-llm-reveal-key.revealed:hover {
+	background: #135e96;
+	border-color: #0a4275;
+}
+
+.wp-llm-reveal-key.revealed .dashicons-visibility:before {
+	content: "\f177"; /* dashicons-hidden icon */
+}
+
+/* Copy button states */
+.wp-llm-copy-key:not(:disabled):hover {
+	background: #f0f0f1;
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.wp-llm-copy-key.copied {
+	background: #00a32a;
+	color: #fff;
+	border-color: #008a20;
+	animation: copySuccess 0.3s ease;
+}
+
+.wp-llm-copy-key.copied:hover {
+	background: #008a20;
+	border-color: #007017;
+}
+
+.wp-llm-copy-key.copied .dashicons-clipboard:before {
+	content: "\f147"; /* dashicons-yes (checkmark) */
+}
+
+@keyframes copySuccess {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.05); }
+}
+
+/* Disabled button styling */
+.wp-llm-reveal-key:disabled,
+.wp-llm-copy-key:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Success notice enhancement for newly generated keys */
+.notice-success .wp-llm-key-container {
+	margin: 8px 0;
+	padding: 8px;
+	background: #f0f6fc;
+	border-radius: 4px;
+	display: inline-flex;
+}
+
+.notice-success .wp-llm-api-key-revealed {
+	background: #fff;
+	border-color: #2271b1;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+	.wp-llm-key-container {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+	}
+	
+	.wp-llm-reveal-key,
+	.wp-llm-copy-key {
+		width: 100%;
+		justify-content: center;
+	}
+	
+	.api-key-display {
+		width: 100%;
+		text-align: center;
+	}
+}
