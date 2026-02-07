@@ -100,6 +100,13 @@
 	overflow-x: auto;
 }
 
+/* Copy button styling */
+.wp-llm-copy-key {
+	margin-left: 10px;
+	vertical-align: middle;
+	cursor: pointer;
+}
+
 @media screen and (max-width: 1200px) {
 	.wp-llm-connector-admin-container {
 		grid-template-columns: 1fr;

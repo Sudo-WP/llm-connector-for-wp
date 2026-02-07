@@ -27,4 +27,55 @@ jQuery( document ).ready( function( $ ) {
 			}
 		}
 	} );
+
+	// Copy API key to clipboard.
+	$( document ).on( 'click', '.wp-llm-copy-key', function( e ) {
+		e.preventDefault();
+		var $button = $( this );
+		var apiKey = $button.data( 'key' );
+		var originalText = $button.text();
+
+		// Try modern clipboard API first.
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( apiKey ).then( function() {
+				// Success feedback.
+				$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+				setTimeout( function() {
+					$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+				}, 2000 );
+			} ).catch( function() {
+				// Fallback if clipboard API fails.
+				fallbackCopyToClipboard( apiKey, $button, originalText );
+			} );
+		} else {
+			// Fallback for older browsers.
+			fallbackCopyToClipboard( apiKey, $button, originalText );
+		}
+	} );
+
+	// Fallback copy method for older browsers.
+	function fallbackCopyToClipboard( text, $button, originalText ) {
+		var $temp = $( '<textarea>' );
+		var success = false;
+		
+		$( 'body' ).append( $temp );
+		$temp.val( text ).select();
+
+		try {
+			success = document.execCommand( 'copy' );
+		} catch ( err ) {
+			success = false;
+		}
+
+		$temp.remove();
+
+		if ( success ) {
+			$button.text( wpLlmConnector.i18n.copiedText ).attr( 'aria-label', wpLlmConnector.i18n.copiedLabel );
+			setTimeout( function() {
+				$button.text( originalText ).attr( 'aria-label', wpLlmConnector.i18n.copyLabel );
+			}, 2000 );
+		} else {
+			alert( wpLlmConnector.i18n.copyError );
+		}
+	}
 } );
