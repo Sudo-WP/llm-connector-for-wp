@@ -6,7 +6,7 @@
 
 A secure WordPress plugin that enables LLM agents (like Claude Code) to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration.
 
-## 🎯 Purpose
+## Purpose
 
 This plugin creates a bridge between your WordPress site and AI LLM agents, allowing them to:
 - Diagnose site issues
@@ -17,7 +17,7 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 
 **All in a secure, read-only mode by default.**
 
-## 🔑 Key Features
+## Key Features
 
 ### Security First
 - **API Key Authentication**: Secure token-based access control
@@ -39,7 +39,7 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 - **Visual Feedback**: Clear status indicators and messages
 - **Documentation Built-In**: Connection examples in the admin
 
-## 📦 Installation
+## Installation
 
 ### Manual Installation
 
@@ -56,7 +56,7 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 - PHP 7.4 or higher
 - MySQL 5.6 or higher
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Enable the Connector
 
@@ -82,7 +82,7 @@ curl -H "X-WP-LLM-API-Key: wpllm_your_api_key_here" \
      https://yoursite.com/wp-json/wp-llm-connector/v1/site-info
 ```
 
-## 📡 Available Endpoints
+## Available Endpoints
 
 All endpoints require authentication via the `X-WP-LLM-API-Key` header.
 
@@ -128,7 +128,7 @@ GET /wp-json/wp-llm-connector/v1/post-stats
 ```
 Returns content statistics for all post types.
 
-## 🔌 Connecting to Claude Code
+## Connecting to Claude Code
 
 To use this plugin with Claude Code, you can create an MCP server configuration:
 
@@ -155,7 +155,7 @@ Add to your Claude Code MCP settings:
 
 The plugin includes a provider system that will eventually auto-generate MCP configurations for supported LLM services.
 
-## 🛡️ Security Considerations
+## Security Considerations
 
 ### Default Security Posture
 
@@ -184,7 +184,7 @@ The plugin ONLY exposes data through the endpoints you explicitly enable. It doe
 - Server passwords
 - File contents
 
-## 🏗️ Architecture
+## Architecture
 
 ### Directory Structure
 
@@ -220,7 +220,7 @@ wp-llm-connector/
 - **Interface Segregation**: Provider interfaces for extensibility
 - **PSR-4 Autoloading**: Modern PHP class loading
 
-## 🔧 Extending the Plugin
+## Extending the Plugin
 
 ### Adding New Endpoints
 
@@ -255,7 +255,7 @@ public function get_custom_data(\WP_REST_Request $request) {
 2. Implement `LLM_Provider_Interface`
 3. Register in the provider manager (future enhancement)
 
-## 📊 Database Schema
+## Database Schema
 
 ### Audit Log Table
 
@@ -299,7 +299,7 @@ wp_llm_connector_audit_log
 - [ ] Real-time notifications via WebSockets
 - [ ] Dashboard widget for quick stats
 
-## 🤝 Contributing
+## Contributing
 
 This is an MVP version. Contributions, feedback, and suggestions are welcome!
 
@@ -311,17 +311,17 @@ This is an MVP version. Contributions, feedback, and suggestions are welcome!
 4. Make your changes
 5. Test thoroughly
 
-## 📝 License
+## License
 
 GPL v2 or later
 
-## 🔗 Links
+## Links
 
 - **Author**: [AmIHacked.com](https://amihacked.com)
 - **Development**: [SudoWP.com](https://sudowp.com)
 - **Support**: [WPRepublic.com](https://wprepublic.com)
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This plugin is designed for site diagnostics and administration. While it includes robust security features, always:
 - Use strong, unique API keys
@@ -332,7 +332,7 @@ This plugin is designed for site diagnostics and administration. While it includ
 
 The authors are not responsible for misuse or unauthorized access resulting from improper configuration.
 
-## 📞 Support
+## Support
 
 For issues, questions, or feature requests:
 1. Check the documentation above
@@ -341,4 +341,4 @@ For issues, questions, or feature requests:
 
 ---
 
-**Built with 🔒 Security and 🚀 Performance in mind**
+**Built with Security and Performance in mind**
