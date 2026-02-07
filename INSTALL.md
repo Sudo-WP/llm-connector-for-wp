@@ -268,7 +268,7 @@ The API keys you generate in WordPress are used by LLM services (like Claude, GP
 
 #### Generating a Key
 
-The API key generated here will be used by your LLM client (Claude, GPT, etc.) to authenticate with WordPress:
+The API key generated here will be used by your LLM client (Claude, GPT, etc.) to authenticate with WordPress. Follow these steps:
 
 1. Settings > LLM Connector > API Keys section
 2. Enter descriptive name
