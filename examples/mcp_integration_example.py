@@ -5,6 +5,10 @@ WP LLM Connector - Claude Code MCP Integration Example
 This script demonstrates how to integrate the WP LLM Connector
 with Claude Code using the Model Context Protocol (MCP).
 
+IMPORTANT: The API_KEY used here is the key you generated in WordPress
+(Settings > LLM Connector), NOT a Claude/Anthropic API key. This key is
+used by Claude to authenticate when connecting to your WordPress site.
+
 Requirements:
     - Python 3.8+
     - requests library: pip install requests
@@ -18,8 +22,11 @@ import os
 from typing import Dict, Any, List
 
 # Configuration
+# IMPORTANT: Replace these values with:
+# 1. Your WordPress site URL
+# 2. The API key you generated in WordPress (Settings > LLM Connector)
 WORDPRESS_URL = "https://yoursite.com"
-API_KEY = "wpllm_your_api_key_here"  # Replace with your actual API key
+API_KEY = "wpllm_your_api_key_here"  # Use the API key from WordPress admin, NOT Claude API key
 MCP_CONFIG_PATH = os.path.expanduser("~/.claude/mcp_config.json")
 
 
@@ -199,10 +206,11 @@ def main():
     
     print("\n✅ Setup complete!")
     print("\nNext steps:")
-    print("1. Restart Claude Code to load the new configuration")
-    print("2. In Claude Code, you can now use WordPress diagnostics tools")
-    print("3. Try: 'Run a WordPress security audit on my site'")
-    print("4. Or: 'Check the system status of my WordPress site'")
+    print("1. Ensure you've set the correct WordPress URL and API key (from WordPress admin) in this script")
+    print("2. Restart Claude Code to load the new configuration")
+    print("3. In Claude Code, you can now use WordPress diagnostics tools")
+    print("4. Try: 'Run a WordPress security audit on my site'")
+    print("5. Or: 'Check the system status of my WordPress site'")
     
     print("\n📚 Available tools:")
     for tool in mcp_server._generate_tools():

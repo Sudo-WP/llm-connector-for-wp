@@ -543,8 +543,8 @@ ORDER BY timestamp DESC;
 
 1. Test on staging first
 2. Export settings (future feature)
-3. Generate new API keys in production
-4. Update MCP configurations
+3. Generate new API keys in production (these keys will be used by LLM services to authenticate)
+4. Update MCP configurations with the new WordPress API keys
 5. Monitor logs for first 24 hours
 6. Verify rate limiting works
 
