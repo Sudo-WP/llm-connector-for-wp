@@ -1,7 +1,7 @@
 # WP LLM Connector
 
 **Version:** 0.1.0 (MVP)  
-**Author:** AmIHacked.com  
+**Author:** SudoWP.com  
 **License:** GPL v2 or later
 
 A secure WordPress plugin that enables LLM agents (like Claude Code) to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration.
