@@ -298,8 +298,8 @@ class Admin_Interface {
 		}
 
 		// Only process on our admin page.
-		$screen = get_current_screen();
-		if ( null === $screen || 'settings_page_wp-llm-connector' !== $screen->id ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified later when processing forms.
+		if ( ! isset( $_GET['page'] ) || 'wp-llm-connector' !== $_GET['page'] ) {
 			return;
 		}
 
