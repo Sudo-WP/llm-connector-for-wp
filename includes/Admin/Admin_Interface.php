@@ -138,6 +138,22 @@ class Admin_Interface {
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
 			<?php
+			// Display error message if available.
+			if ( isset( $_GET['error'] ) && $_GET['error'] === '1' ) {
+				// Verify nonce to prevent URL manipulation.
+				if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_error' ) ) {
+					$error_message = get_transient( 'wp_llm_connector_error' );
+					if ( $error_message ) {
+						delete_transient( 'wp_llm_connector_error' );
+						?>
+						<div class="notice notice-error is-dismissible">
+							<p><?php echo esc_html( $error_message ); ?></p>
+						</div>
+						<?php
+					}
+				}
+			}
+
 			// Display generated API key if available (with copy button).
 			if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
 				// Verify nonce to prevent URL manipulation.
@@ -393,17 +409,28 @@ class Admin_Interface {
 			$name_exists = in_array( $key_name, array_column( $existing_keys, 'name' ), true );
 
 			if ( $name_exists ) {
-				add_settings_error(
-					'wp_llm_connector_messages',
-					'duplicate_key_name',
+				// Store error message in transient to display after redirect.
+				set_transient(
+					'wp_llm_connector_error',
 					sprintf(
 						/* translators: %s: the duplicate key name */
 						__( 'An API key with the name "%s" already exists. Please use a unique name.', 'wp-llm-connector' ),
 						esc_html( $key_name )
 					),
-					'error'
+					30
 				);
-				return;
+
+				// Redirect to show error.
+				$redirect_url = add_query_arg(
+					array(
+						'page'  => 'wp-llm-connector',
+						'error' => '1',
+						'_wpnonce' => wp_create_nonce( 'wp_llm_connector_error' ),
+					),
+					admin_url( 'options-general.php' )
+				);
+				wp_safe_redirect( $redirect_url );
+				exit;
 			}
 
 			$api_key  = \WP_LLM_Connector\Security\Security_Manager::generate_api_key();
