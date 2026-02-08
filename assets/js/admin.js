@@ -31,124 +31,60 @@ jQuery(document).ready(function($) {
 	});
 
 	// ========================================
-	// Reveal/Hide API key functionality
+	// Copy new API key to clipboard
+	// Key is in data-key attribute and gets
+	// removed from DOM after successful copy.
 	// ========================================
-	$(document).on('click', '.wp-llm-reveal-key:not(:disabled)', function(e) {
+	$(document).on('click', '.wp-llm-copy-new-key', function(e) {
 		e.preventDefault();
+
 		var $button = $(this);
-		var $keyElement = $('#wp-llm-generated-key');
-		var apiKey = $button.data('key');
-		
-		if (typeof wpLlmConnector === 'undefined') {
-			console.error('wpLlmConnector is not defined');
+		var apiKey = $button.attr('data-key');
+
+		if (!apiKey || apiKey.length === 0) {
+			alert('API key has already been copied and removed for security. Please generate a new key if needed.');
 			return;
 		}
 
-		if ($keyElement.hasClass('wp-llm-api-key-hidden')) {
-			// Reveal the key
-			$keyElement
-				.removeClass('wp-llm-api-key-hidden')
-				.addClass('wp-llm-api-key-revealed')
-				.text(apiKey)
-				.attr('title', wpLlmConnector.i18n.revealedKeyTitle);
-			
-			$button
-				.addClass('revealed')
-				.attr('aria-label', wpLlmConnector.i18n.hideKeyLabel)
-				.find('.dashicons')
-				.removeClass('dashicons-visibility')
-				.addClass('dashicons-hidden');
-			
-			$button.contents().filter(function() {
-				return this.nodeType === 3; // Text node
-			}).first().replaceWith(' ' + wpLlmConnector.i18n.hideText);
-			
-		} else {
-			// Hide the key
-			$keyElement
-				.removeClass('wp-llm-api-key-revealed')
-				.addClass('wp-llm-api-key-hidden')
-				.text('••••••••••••••••••••••••••••••••')
-				.attr('title', wpLlmConnector.i18n.hiddenKeyTitle);
-			
-			$button
-				.removeClass('revealed')
-				.attr('aria-label', wpLlmConnector.i18n.revealKeyLabel)
-				.find('.dashicons')
-				.removeClass('dashicons-hidden')
-				.addClass('dashicons-visibility');
-			
-			$button.contents().filter(function() {
-				return this.nodeType === 3; // Text node
-			}).first().replaceWith(' ' + wpLlmConnector.i18n.revealText);
-		}
-	});
-
-	// ========================================
-	// Copy API key to clipboard
-	// ========================================
-	$(document).on('click', '.wp-llm-copy-key:not(:disabled)', function(e) {
-		e.preventDefault();
-		var $button = $(this);
-		var apiKey = $button.data('key');
 		var $icon = $button.find('.dashicons');
-		var originalText = $button.contents().filter(function() {
-			return this.nodeType === 3;
-		}).text();
 
-		if (typeof wpLlmConnector === 'undefined') {
-			console.error('wpLlmConnector is not defined');
-			alert('Failed to copy to clipboard. Please select and copy the key manually.');
-			return;
-		}
-
-		// Try modern clipboard API first
+		// Try modern clipboard API first.
 		if (navigator.clipboard && navigator.clipboard.writeText) {
 			navigator.clipboard.writeText(apiKey).then(function() {
-				// Success
-				$button
-					.addClass('copied')
-					.attr('aria-label', wpLlmConnector.i18n.copiedLabel);
-				
-				$icon
-					.removeClass('dashicons-clipboard')
-					.addClass('dashicons-yes');
-				
-				$button.contents().filter(function() {
-					return this.nodeType === 3;
-				}).first().replaceWith(' ' + wpLlmConnector.i18n.copiedText);
-				
-				// Reset after 2 seconds
-				setTimeout(function() {
-					$button
-						.removeClass('copied')
-						.attr('aria-label', wpLlmConnector.i18n.copyLabel);
-					
-					$icon
-						.removeClass('dashicons-yes')
-						.addClass('dashicons-clipboard');
-					
-					$button.contents().filter(function() {
-						return this.nodeType === 3;
-					}).first().replaceWith(' ' + originalText);
-				}, 2000);
+				showCopySuccess($button, $icon);
+				// Security: remove key from DOM after successful copy.
+				$button.removeAttr('data-key');
 			}).catch(function() {
-				// Fallback on error
-				fallbackCopyToClipboard(apiKey, $button, $icon, originalText);
+				fallbackCopy(apiKey, $button, $icon);
 			});
 		} else {
-			// Fallback for older browsers
-			fallbackCopyToClipboard(apiKey, $button, $icon, originalText);
+			fallbackCopy(apiKey, $button, $icon);
 		}
 	});
 
 	// ========================================
-	// Fallback copy method for older browsers
+	// Copy success visual feedback
 	// ========================================
-	function fallbackCopyToClipboard(text, $button, $icon, originalText) {
+	function showCopySuccess($button, $icon) {
+		$button.addClass('copied');
+		$icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
+		$button.find('.wp-llm-btn-text').text(wpLlmConnector.i18n.copiedText);
+
+		// Reset after 2 seconds.
+		setTimeout(function() {
+			$button.removeClass('copied');
+			$icon.removeClass('dashicons-yes').addClass('dashicons-clipboard');
+			$button.find('.wp-llm-btn-text').text(wpLlmConnector.i18n.copyText);
+		}, 2000);
+	}
+
+	// ========================================
+	// Fallback copy for older browsers
+	// ========================================
+	function fallbackCopy(text, $button, $icon) {
 		var $temp = $('<textarea>');
 		var success = false;
-		
+
 		$('body').append($temp);
 		$temp.val(text).select();
 
@@ -161,70 +97,21 @@ jQuery(document).ready(function($) {
 		$temp.remove();
 
 		if (success) {
-			if (typeof wpLlmConnector !== 'undefined') {
-				$button
-					.addClass('copied')
-					.attr('aria-label', wpLlmConnector.i18n.copiedLabel);
-				
-				$icon
-					.removeClass('dashicons-clipboard')
-					.addClass('dashicons-yes');
-				
-				$button.contents().filter(function() {
-					return this.nodeType === 3;
-				}).first().replaceWith(' ' + wpLlmConnector.i18n.copiedText);
-				
-				setTimeout(function() {
-					$button
-						.removeClass('copied')
-						.attr('aria-label', wpLlmConnector.i18n.copyLabel);
-					
-					$icon
-						.removeClass('dashicons-yes')
-						.addClass('dashicons-clipboard');
-					
-					$button.contents().filter(function() {
-						return this.nodeType === 3;
-					}).first().replaceWith(' ' + originalText);
-				}, 2000);
-			} else {
-				$button.text('Copied!');
-				setTimeout(function() {
-					$button.text(originalText);
-				}, 2000);
-			}
+			showCopySuccess($button, $icon);
+			// Security: remove key from DOM after successful copy.
+			$button.removeAttr('data-key');
 		} else {
-			if (typeof wpLlmConnector !== 'undefined') {
-				alert(wpLlmConnector.i18n.copyError);
-			} else {
-				alert('Failed to copy to clipboard. Please select and copy the key manually.');
-			}
+			alert(wpLlmConnector.i18n.copyError);
 		}
 	}
 
 	// ========================================
-	// Double-click to temporarily reveal
+	// Scroll to new key row if present
 	// ========================================
-	$(document).on('dblclick', '#wp-llm-generated-key.wp-llm-api-key-hidden', function(e) {
-		e.preventDefault();
-		var $keyElement = $(this);
-		var $revealBtn = $('.wp-llm-reveal-key[data-key]').first();
-		
-		if ($revealBtn.length && !$revealBtn.hasClass('revealed')) {
-			// Trigger reveal
-			$revealBtn.trigger('click');
-			
-			// Auto-hide after 5 seconds
-			setTimeout(function() {
-				if ($revealBtn.hasClass('revealed')) {
-					$revealBtn.trigger('click');
-				}
-			}, 5000);
-		}
-	});
-
-	// Add tooltip for double-click hint
-	$('#wp-llm-generated-key').attr('title', function(index, attr) {
-		return attr + ' (Double-click to reveal for 5 seconds)';
-	});
+	var $newKeyRow = $('.wp-llm-new-key-row');
+	if ($newKeyRow.length) {
+		setTimeout(function() {
+			$newKeyRow[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}, 300);
+	}
 });

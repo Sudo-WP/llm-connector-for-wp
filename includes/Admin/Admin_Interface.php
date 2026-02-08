@@ -87,18 +87,21 @@ class Admin_Interface {
 			return;
 		}
 
+		// Enqueue Dashicons
+		wp_enqueue_style( 'dashicons' );
+
 		wp_enqueue_style(
 			'wp-llm-connector-admin',
 			WP_LLM_CONNECTOR_PLUGIN_URL . 'assets/css/admin.css',
-			array(),
-			WP_LLM_CONNECTOR_VERSION
+			array( 'dashicons' ),
+			WP_LLM_CONNECTOR_VERSION . '.' . time()
 		);
 
 		wp_enqueue_script(
 			'wp-llm-connector-admin',
 			WP_LLM_CONNECTOR_PLUGIN_URL . 'assets/js/admin.js',
 			array( 'jquery' ),
-			WP_LLM_CONNECTOR_VERSION,
+			WP_LLM_CONNECTOR_VERSION . '.' . time(),
 			true
 		);
 
@@ -108,18 +111,13 @@ class Admin_Interface {
 			array(
 				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
 				'nonce'              => wp_create_nonce( 'wp_llm_connector_ajax' ),
+				'newKey'             => $this->get_new_key_for_js(),
 				'i18n'               => array(
 					'copyLabel'      => __( 'Copy to clipboard', 'wp-llm-connector' ),
 					'copiedLabel'    => __( 'Copied to clipboard', 'wp-llm-connector' ),
-					'copyText'       => __( 'Copy', 'wp-llm-connector' ),
+					'copyText'       => __( 'Copy Full Key', 'wp-llm-connector' ),
 					'copiedText'     => __( 'Copied!', 'wp-llm-connector' ),
 					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
-					'revealText'     => __( 'Reveal', 'wp-llm-connector' ),
-					'hideText'       => __( 'Hide', 'wp-llm-connector' ),
-					'revealKeyLabel' => __( 'Reveal key', 'wp-llm-connector' ),
-					'hideKeyLabel'   => __( 'Hide key', 'wp-llm-connector' ),
-					'hiddenKeyTitle' => __( 'Click Reveal to view the key', 'wp-llm-connector' ),
-					'revealedKeyTitle' => __( 'Click or select to copy', 'wp-llm-connector' ),
 				),
 			)
 		);
@@ -139,6 +137,20 @@ class Admin_Interface {
 			'post_stats'    => __( 'Post Statistics', 'wp-llm-connector' ),
 			'system_status' => __( 'System Status', 'wp-llm-connector' ),
 		);
+
+		// Check if a new key was just generated and retrieve the full key from transient.
+		$new_key_full  = false;
+		$new_key_id    = false;
+
+		if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
+			if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
+				$transient_key = 'wp_llm_connector_new_key_' . get_current_user_id();
+				$new_key_full  = get_transient( $transient_key );
+
+				// Also retrieve which key ID was just generated.
+				$new_key_id = get_transient( $transient_key . '_id' );
+			}
+		}
 
 		?>
 		<div class="wrap">
@@ -161,33 +173,16 @@ class Admin_Interface {
 				}
 			}
 
-			// Display generated API key if available (with copy button).
-			if ( isset( $_GET['key_generated'] ) && $_GET['key_generated'] === '1' ) {
-				// Verify nonce to prevent URL manipulation.
-				if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_key_generated' ) ) {
-					$api_key = get_transient( 'wp_llm_connector_new_key' );
-					if ( $api_key ) {
-						delete_transient( 'wp_llm_connector_new_key' );
-						?>
-						<div class="notice notice-success is-dismissible">
-							<p>
-								<strong><?php esc_html_e( 'API Key generated successfully:', 'wp-llm-connector' ); ?></strong>
-								<span class="wp-llm-key-container">
-									<code id="wp-llm-generated-key" class="wp-llm-api-key-hidden" data-key="<?php echo esc_attr( $api_key ); ?>" title="<?php echo esc_attr__( 'Click Reveal to view the key', 'wp-llm-connector' ); ?>">••••••••••••••••••••••••••••••••</code>
-								</span>
-								<button type="button" class="button button-small wp-llm-reveal-key" data-key="<?php echo esc_attr( $api_key ); ?>" aria-label="<?php echo esc_attr__( 'Reveal key', 'wp-llm-connector' ); ?>">
-									<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
-								</button>
-								<button type="button" class="button button-small wp-llm-copy-key" data-key="<?php echo esc_attr( $api_key ); ?>" aria-label="<?php echo esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ); ?>">
-									<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
-								</button>
-								<br>
-								<em><?php esc_html_e( 'Copy this key now and provide it to your LLM client configuration. It cannot be shown again.', 'wp-llm-connector' ); ?></em>
-							</p>
-						</div>
-						<?php
-					}
-				}
+			// Show a brief success notice (no key displayed here — it's in the table row).
+			if ( $new_key_full ) {
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p>
+						<strong><?php esc_html_e( 'API Key generated successfully!', 'wp-llm-connector' ); ?></strong>
+						<?php esc_html_e( 'Use the Reveal and Copy buttons in the table below to view and copy your new key. The full key is only available temporarily.', 'wp-llm-connector' ); ?>
+					</p>
+				</div>
+				<?php
 			}
 
 			// Display log purge success message.
@@ -329,7 +324,7 @@ class Admin_Interface {
 				<div class="wp-llm-connector-api-keys">
 					<h2><?php esc_html_e( 'API Keys', 'wp-llm-connector' ); ?></h2>
 
-					<?php $this->render_api_keys_section( $settings ); ?>
+					<?php $this->render_api_keys_section( $settings, $new_key_full, $new_key_id ); ?>
 
 					<div class="wp-llm-connector-info">
 						<h2><?php esc_html_e( 'Connection Information', 'wp-llm-connector' ); ?></h2>
@@ -359,7 +354,14 @@ class Admin_Interface {
 		<?php
 	}
 
-	private function render_api_keys_section( $settings ) {
+	/**
+	 * Render the API keys section.
+	 *
+	 * @param array       $settings      Plugin settings.
+	 * @param string|bool $new_key_full  The full API key if just generated, false otherwise.
+	 * @param string|bool $new_key_id    The key ID of the newly generated key, false otherwise.
+	 */
+	private function render_api_keys_section( $settings, $new_key_full = false, $new_key_id = false ) {
 		$api_keys = $settings['api_keys'] ?? array();
 		?>
 
@@ -399,38 +401,34 @@ class Admin_Interface {
 						</td>
 					</tr>
 				<?php else : ?>
-					<?php foreach ( $api_keys as $key_id => $key_data ) : ?>
-						<tr>
-							<td><?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?></td>
+					<?php foreach ( $api_keys as $key_id => $key_data ) :
+						// Determine if this is the newly generated key.
+						$is_new_key = ( $new_key_full && $new_key_id === $key_id );
+					?>
+						<tr<?php echo $is_new_key ? ' class="wp-llm-new-key-row"' : ''; ?>>
 							<td>
-	<div class="wp-llm-key-container">
-		<code class="api-key-display wp-llm-api-key-hidden" 
-			id="wp-llm-key-<?php echo esc_attr( $key_id ); ?>"
-			data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..." 
-			title="<?php echo esc_attr__( 'Full key is hidden for security', 'wp-llm-connector' ); ?>">
-			<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
-		</code>
-		<button type="button" 
-			class="button button-small wp-llm-reveal-key" 
-			data-key-id="<?php echo esc_attr( $key_id ); ?>"
-			data-key="••••••••••••••••••••••••••••••••"
-			aria-label="<?php echo esc_attr__( 'Reveal key (not available for existing keys)', 'wp-llm-connector' ); ?>"
-			disabled
-			title="<?php echo esc_attr__( 'Full keys cannot be retrieved after generation', 'wp-llm-connector' ); ?>">
-			<span class="dashicons dashicons-visibility"></span>
-			<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
-		</button>
-		<button type="button" 
-			class="button button-small wp-llm-copy-key" 
-			data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..."
-			aria-label="<?php echo esc_attr__( 'Copy key prefix only', 'wp-llm-connector' ); ?>"
-			disabled
-			title="<?php echo esc_attr__( 'Full keys cannot be copied after generation', 'wp-llm-connector' ); ?>">
-			<span class="dashicons dashicons-clipboard"></span>
-			<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
-		</button>
-	</div>
-</td>
+								<?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?>
+								<?php if ( $is_new_key ) : ?>
+									<span class="wp-llm-new-badge"><?php esc_html_e( 'NEW', 'wp-llm-connector' ); ?></span>
+								<?php endif; ?>
+							</td>
+							<td>
+								<code class="api-key-display">
+									<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
+								</code>
+								<?php if ( $is_new_key ) : ?>
+									<div class="wp-llm-copy-row">
+										<button type="button"
+											class="button button-small button-primary wp-llm-copy-new-key"
+											data-key="<?php echo esc_attr( $new_key_full ); ?>"
+											onclick="(function(btn){var k=btn.getAttribute('data-key');if(!k){alert('Key already copied.');return;}navigator.clipboard.writeText(k).then(function(){btn.removeAttribute('data-key');btn.querySelector('.wp-llm-btn-text').textContent='Copied!';btn.style.backgroundColor='#00a32a';btn.style.borderColor='#008a20';setTimeout(function(){btn.querySelector('.wp-llm-btn-text').textContent='Copy Full Key';btn.style.backgroundColor='';btn.style.borderColor='';},2000);}).catch(function(){prompt('Copy this key manually:',k);});})(this);return false;"
+											aria-label="<?php echo esc_attr__( 'Copy full API key to clipboard', 'wp-llm-connector' ); ?>">
+											<span class="dashicons dashicons-clipboard"></span>
+											<span class="wp-llm-btn-text"><?php esc_html_e( 'Copy Full Key', 'wp-llm-connector' ); ?></span>
+										</button>
+									</div>
+								<?php endif; ?>
+							</td>
 							<td><?php echo esc_html( wp_date( 'Y-m-d H:i', $key_data['created'] ?? time() ) ); ?></td>
 							<td>
 								<?php if ( $key_data['active'] ?? true ) : ?>
@@ -456,6 +454,26 @@ class Admin_Interface {
 		</table>
 
 		<?php
+	}
+
+	/**
+	 * Get the newly generated API key for JavaScript (passed via wp_localize_script).
+	 * This avoids putting the full key in a data-attribute in the HTML.
+	 * The key is only available temporarily via a user-specific transient.
+	 *
+	 * @return string Empty string if no new key, otherwise the full key.
+	 */
+	private function get_new_key_for_js() {
+		// Only provide the key if we're on the key_generated page.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['key_generated'] ) || $_GET['key_generated'] !== '1' ) {
+			return '';
+		}
+
+		// Retrieve from user-specific transient (set during key generation).
+		$transient_key = 'wp_llm_connector_new_key_' . get_current_user_id();
+		$api_key = get_transient( $transient_key );
+		return $api_key ? $api_key : '';
 	}
 
 	public function handle_api_key_actions() {
@@ -517,16 +535,16 @@ class Admin_Interface {
 				'active'     => true,
 			);
 
-			// Update the option. WordPress update_option() returns false if the value hasn't changed,
-			// but since we're adding a new key with a unique ID, this should always succeed.
+			// Update the option.
 			update_option( 'wp_llm_connector_settings', $settings );
 			
 			// Verify the key was actually saved by reading it back.
 			$verified_settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $verified_settings['api_keys'][ $key_id ] ) ) {
-				// Success! Store the generated key in a transient so we can show it after redirect.
-				// Use a 5-minute expiration to give users time to see the key.
-				set_transient( 'wp_llm_connector_new_key', $api_key, 300 );
+				// Success! Store the generated key and its ID in user-specific transients.
+				$transient_key = 'wp_llm_connector_new_key_' . get_current_user_id();
+				set_transient( $transient_key, $api_key, HOUR_IN_SECONDS );
+				set_transient( $transient_key . '_id', $key_id, HOUR_IN_SECONDS );
 				
 				// Redirect to show the key.
 				$redirect_url = add_query_arg(

@@ -1,3 +1,7 @@
+/* ========================================
+   Layout
+   ======================================== */
+
 .wp-llm-connector-admin-container {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -30,6 +34,10 @@
 	margin-top: 30px;
 }
 
+/* ========================================
+   Info Box
+   ======================================== */
+
 .info-box {
 	background: #f9f9f9;
 	padding: 15px;
@@ -60,6 +68,10 @@
 	margin-bottom: 5px;
 }
 
+/* ========================================
+   Status Labels
+   ======================================== */
+
 .status-active {
 	color: #007017;
 	font-weight: 600;
@@ -70,30 +82,127 @@
 	font-weight: 600;
 }
 
-.api-key-display {
-	font-family: monospace;
-	background: #f0f0f0;
-	padding: 4px 8px;
-	border-radius: 3px;
-	font-size: 12px;
-}
+/* ========================================
+   API Key Table & Display
+   ======================================== */
 
 .wp-llm-connector-api-keys table {
 	margin-top: 15px;
 }
 
-/* Endpoint checkboxes — replaces inline style */
+.wp-llm-connector-api-keys h2,
+.wp-llm-connector-info h2 {
+	margin-top: 0;
+	font-size: 20px;
+}
+
+.wp-llm-existing-keys-title {
+	margin-top: 30px;
+}
+
+/* API key display (prefix shown in table) */
+.api-key-display {
+	font-family: 'Courier New', Courier, monospace;
+	background: #f0f0f0;
+	padding: 4px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	display: inline-block;
+}
+
+/* ========================================
+   Copy Button for New Keys
+   ======================================== */
+
+.wp-llm-copy-row {
+	margin-top: 6px;
+}
+
+.wp-llm-copy-new-key {
+	display: inline-flex !important;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	height: auto;
+	line-height: 1.4;
+	font-size: 13px;
+	transition: all 0.2s ease;
+	cursor: pointer;
+}
+
+.wp-llm-copy-new-key .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+}
+
+.wp-llm-copy-new-key .wp-llm-btn-text {
+	vertical-align: middle;
+}
+
+/* Copied state */
+.wp-llm-copy-new-key.copied {
+	background: #00a32a !important;
+	color: #fff !important;
+	border-color: #008a20 !important;
+}
+
+.wp-llm-copy-new-key.copied .dashicons-clipboard:before {
+	content: "\f147"; /* dashicons-yes (checkmark) */
+}
+
+/* ========================================
+   Newly Generated Key Row Highlight
+   ======================================== */
+
+.wp-llm-new-key-row {
+	background: #f0f6fc !important;
+	border-left: 4px solid #2271b1;
+	animation: newKeyHighlight 3s ease;
+}
+
+@keyframes newKeyHighlight {
+	0% { background: #d4edda; }
+	100% { background: #f0f6fc; }
+}
+
+/* "NEW" badge next to the key name */
+.wp-llm-new-badge {
+	display: inline-block;
+	background: #2271b1;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 3px;
+	margin-left: 6px;
+	vertical-align: middle;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+}
+
+/* ========================================
+   Endpoint Checkboxes
+   ======================================== */
+
 .wp-llm-endpoint-checkbox {
 	display: block;
 	margin-bottom: 5px;
 }
 
-/* Empty keys message — replaces inline style */
+/* ========================================
+   Empty Keys Message
+   ======================================== */
+
 .wp-llm-empty-keys {
 	text-align: center;
 }
 
-/* Generate key section — replaces inline style */
+/* ========================================
+   Generate Key Section
+   ======================================== */
+
 .wp-llm-generate-key {
 	margin-top: 0;
 	margin-bottom: 30px;
@@ -107,7 +216,10 @@
 	margin-right: 10px;
 }
 
-/* Improve form table readability */
+/* ========================================
+   Form Table Readability
+   ======================================== */
+
 .wp-llm-connector-main-settings .form-table th {
 	padding-top: 15px;
 	padding-bottom: 15px;
@@ -124,284 +236,75 @@
 	font-style: italic;
 }
 
-.wp-llm-connector-api-keys h2,
-.wp-llm-connector-info h2 {
-	margin-top: 0;
-	font-size: 20px;
-}
+/* ========================================
+   Code Block
+   ======================================== */
 
-/* Existing keys title */
-.wp-llm-existing-keys-title {
-	margin-top: 30px;
-}
-
-/* Code block — replaces inline style */
 .wp-llm-code-block {
 	background: #f5f5f5;
 	padding: 15px;
 	overflow-x: auto;
 }
 
-/* Copy button styling */
-.wp-llm-copy-key {
-	margin-left: 10px;
-	vertical-align: middle;
-	cursor: pointer;
-}
+/* ========================================
+   Inline Forms (Revoke)
+   ======================================== */
 
-/* Reveal button styling */
-.wp-llm-reveal-key {
-	margin-left: 10px;
-	vertical-align: middle;
-	cursor: pointer;
-}
-
-/* API key display states */
-.wp-llm-api-key-hidden {
-	user-select: none;
-	cursor: default;
-	letter-spacing: 2px;
-}
-
-.wp-llm-api-key-revealed {
-	user-select: all;
-	cursor: text;
-	background: #fff8dc;
-	padding: 6px 10px;
-	border: 1px solid #d4af37;
-	border-radius: 3px;
-	transition: background-color 0.2s ease;
-}
-
-.wp-llm-api-key-revealed:hover {
-	background: #fffacd;
-	outline: 2px solid #d4af37;
-}
-
-/* Container for key and buttons */
-.wp-llm-key-container {
-	display: inline-block;
-	margin: 5px 0;
-}
-
-/* Inline form for revoke buttons */
 .wp-llm-inline-form {
 	display: inline;
 	margin: 0;
 }
 
-/* Responsive table styling for mobile devices */
-/* 782px breakpoint matches WordPress admin responsive breakpoint */
+/* ========================================
+   Responsive: Mobile
+   ======================================== */
+
 @media screen and (max-width: 782px) {
 	.wp-llm-connector-api-keys table {
 		font-size: 14px;
 	}
-	
+
 	.wp-llm-connector-api-keys td,
 	.wp-llm-connector-api-keys th {
 		padding: 10px 8px;
 	}
-	
+
 	.api-key-display {
 		font-size: 11px;
 		padding: 3px 6px;
 	}
-	
+
 	.wp-llm-generate-key input[type="text"] {
 		width: 100%;
 		margin-bottom: 10px;
 	}
-	
+
 	.wp-llm-generate-key .button {
 		width: 100%;
 	}
+
+	.wp-llm-copy-new-key {
+		width: 100%;
+		justify-content: center;
+	}
 }
 
-/* Desktop layout - 2 column grid for larger screens */
-/* Breakpoint at 1201px means desktop layout applies when width > 1200px */
+/* ========================================
+   Responsive: Desktop 2-Column Layout
+   ======================================== */
+
 @media screen and (min-width: 1201px) {
 	.wp-llm-connector-admin-container {
 		grid-template-columns: 2fr 1fr;
 	}
-	
+
 	.wp-llm-connector-main-settings {
 		grid-column: 1;
 		grid-row: 1;
 	}
-	
+
 	.wp-llm-connector-api-keys {
 		grid-column: 2;
 		grid-row: 1;
-	}
-}
-/* ========================================
-   API Key Reveal Feature Enhancements
-   ======================================== */
-
-/* API key container */
-.wp-llm-key-container {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	flex-wrap: wrap;
-}
-
-/* Enhanced API key display */
-.api-key-display {
-	font-family: 'Courier New', Courier, monospace;
-	background: #f8f9fa;
-	padding: 6px 12px;
-	border-radius: 4px;
-	font-size: 13px;
-	border: 1px solid #ddd;
-	transition: all 0.2s ease;
-	user-select: none;
-	min-width: 180px;
-}
-
-.api-key-display:hover {
-	background: #e9ecef;
-	border-color: #adb5bd;
-}
-
-/* Hidden state (default) */
-.wp-llm-api-key-hidden {
-	letter-spacing: 2px;
-	color: #495057;
-	cursor: default;
-}
-
-/* Revealed state */
-.wp-llm-api-key-revealed {
-	user-select: all;
-	cursor: text;
-	background: #fff8e1;
-	border-color: #ffc107;
-	letter-spacing: 0.5px;
-	color: #000;
-	animation: revealPulse 0.3s ease;
-}
-
-.wp-llm-api-key-revealed:hover {
-	background: #fff3cd;
-	border-color: #ff9800;
-	outline: 2px solid #ffc107;
-	outline-offset: 1px;
-}
-
-@keyframes revealPulse {
-	0% { opacity: 0; transform: scale(0.98); }
-	100% { opacity: 1; transform: scale(1); }
-}
-
-/* Reveal button styling with dashicons */
-.wp-llm-reveal-key,
-.wp-llm-copy-key {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 4px 10px;
-	height: auto;
-	line-height: 1.4;
-	font-size: 13px;
-	transition: all 0.2s ease;
-}
-
-.wp-llm-reveal-key .dashicons,
-.wp-llm-copy-key .dashicons {
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-	margin-top: -2px;
-}
-
-/* Reveal button states */
-.wp-llm-reveal-key:not(:disabled):hover {
-	background: #f0f0f1;
-	border-color: #2271b1;
-	color: #2271b1;
-}
-
-.wp-llm-reveal-key.revealed {
-	background: #2271b1;
-	color: #fff;
-	border-color: #135e96;
-}
-
-.wp-llm-reveal-key.revealed:hover {
-	background: #135e96;
-	border-color: #0a4275;
-}
-
-.wp-llm-reveal-key.revealed .dashicons-visibility:before {
-	content: "\f177"; /* dashicons-hidden icon */
-}
-
-/* Copy button states */
-.wp-llm-copy-key:not(:disabled):hover {
-	background: #f0f0f1;
-	border-color: #2271b1;
-	color: #2271b1;
-}
-
-.wp-llm-copy-key.copied {
-	background: #00a32a;
-	color: #fff;
-	border-color: #008a20;
-	animation: copySuccess 0.3s ease;
-}
-
-.wp-llm-copy-key.copied:hover {
-	background: #008a20;
-	border-color: #007017;
-}
-
-.wp-llm-copy-key.copied .dashicons-clipboard:before {
-	content: "\f147"; /* dashicons-yes (checkmark) */
-}
-
-@keyframes copySuccess {
-	0%, 100% { transform: scale(1); }
-	50% { transform: scale(1.05); }
-}
-
-/* Disabled button styling */
-.wp-llm-reveal-key:disabled,
-.wp-llm-copy-key:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-/* Success notice enhancement for newly generated keys */
-.notice-success .wp-llm-key-container {
-	margin: 8px 0;
-	padding: 8px;
-	background: #f0f6fc;
-	border-radius: 4px;
-	display: inline-flex;
-}
-
-.notice-success .wp-llm-api-key-revealed {
-	background: #fff;
-	border-color: #2271b1;
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 782px) {
-	.wp-llm-key-container {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 6px;
-	}
-	
-	.wp-llm-reveal-key,
-	.wp-llm-copy-key {
-		width: 100%;
-		justify-content: center;
-	}
-	
-	.api-key-display {
-		width: 100%;
-		text-align: center;
 	}
 }
