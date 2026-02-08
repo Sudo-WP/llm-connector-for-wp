@@ -44,7 +44,6 @@ class Admin_Interface {
 		$sanitized = array();
 
 		$sanitized['enabled']        = isset( $input['enabled'] ) ? (bool) $input['enabled'] : false;
-		$sanitized['read_only_mode'] = isset( $input['read_only_mode'] ) ? (bool) $input['read_only_mode'] : true;
 		$sanitized['rate_limit']     = isset( $input['rate_limit'] ) ? absint( $input['rate_limit'] ) : 60;
 		$sanitized['log_requests']   = isset( $input['log_requests'] ) ? (bool) $input['log_requests'] : true;
 		$sanitized['preserve_settings_on_uninstall'] = isset( $input['preserve_settings_on_uninstall'] ) ? (bool) $input['preserve_settings_on_uninstall'] : false;
@@ -94,14 +93,14 @@ class Admin_Interface {
 			'wp-llm-connector-admin',
 			WP_LLM_CONNECTOR_PLUGIN_URL . 'assets/css/admin.css',
 			array( 'dashicons' ),
-			WP_LLM_CONNECTOR_VERSION . '.' . time()
+			WP_LLM_CONNECTOR_VERSION
 		);
 
 		wp_enqueue_script(
 			'wp-llm-connector-admin',
 			WP_LLM_CONNECTOR_PLUGIN_URL . 'assets/js/admin.js',
 			array( 'jquery' ),
-			WP_LLM_CONNECTOR_VERSION . '.' . time(),
+			WP_LLM_CONNECTOR_VERSION,
 			true
 		);
 
@@ -221,15 +220,12 @@ class Admin_Interface {
 							</tr>
 
 							<tr>
-								<th scope="row"><?php esc_html_e( 'Read-Only Mode', 'wp-llm-connector' ); ?></th>
+								<th scope="row"><?php esc_html_e( 'Access Mode', 'wp-llm-connector' ); ?></th>
 								<td>
-									<label>
-										<input type="checkbox" name="wp_llm_connector_settings[read_only_mode]" value="1"
-											<?php checked( $settings['read_only_mode'] ?? true, true ); ?>>
-										<?php esc_html_e( 'Enforce read-only access (recommended)', 'wp-llm-connector' ); ?>
-									</label>
+									<span class="dashicons dashicons-lock" style="color: #00a32a; margin-right: 4px;"></span>
+									<strong><?php esc_html_e( 'Read-Only', 'wp-llm-connector' ); ?></strong>
 									<p class="description">
-										<?php esc_html_e( 'When enabled, LLMs can only read data, not modify anything', 'wp-llm-connector' ); ?>
+										<?php esc_html_e( 'All API access is read-only by design. LLMs can view site data but cannot create, modify, or delete anything.', 'wp-llm-connector' ); ?>
 									</p>
 								</td>
 							</tr>

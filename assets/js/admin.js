@@ -20,17 +20,6 @@ jQuery(document).ready(function($) {
 	});
 
 	// ========================================
-	// Warning when disabling read-only mode
-	// ========================================
-	$('input[name="wp_llm_connector_settings[read_only_mode]"]').on('change', function() {
-		if (!$(this).is(':checked')) {
-			if (!confirm('WARNING: Disabling read-only mode will allow LLMs to make changes to your site. This is not recommended unless you fully trust the LLM provider and have backups in place.\n\nContinue anyway?')) {
-				$(this).prop('checked', true);
-			}
-		}
-	});
-
-	// ========================================
 	// Copy new API key to clipboard
 	// Key is in data-key attribute and gets
 	// removed from DOM after successful copy.
