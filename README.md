@@ -1,10 +1,10 @@
 # LLM Connector for WordPress
 
-**Version:** 0.1.1 (MVP)  
+**Version:** 0.1.2 (MVP)  
 **Author:** SudoWP.com  
 **License:** GPL v2 or later
 
-A secure WordPress plugin that enables LLM agents (like Claude Code) to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration. Currently supports Claude Code LLM with more LLMs coming in future versions.
+A secure WordPress plugin that enables LLM agents to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration. Currently supports Claude Code and Gemini CLI via MCP (Model Context Protocol), with more LLM integrations coming in future versions.
 
 ## Purpose
 
@@ -21,16 +21,16 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 
 ### Security First
 - **API Key Authentication**: Secure token-based access control
-- **Read-Only Mode**: Enforced by default - LLMs can only read, never modify
+- **Read-Only by Design**: Enforced architecturally — no write endpoints exist in the codebase
 - **Rate Limiting**: Configurable request limits per API key
 - **Audit Logging**: Full request logging for security monitoring
 - **IP Tracking**: Monitor where requests originate
 - **Granular Permissions**: Enable only the endpoints you need
 
 ### Extensible Architecture
-- **Provider-Agnostic**: Built to support multiple LLM providers
-- **Modular Design**: Easy to extend with new endpoints
-- **Standard REST API**: Uses WordPress REST API standards
+- **MCP Compatible**: Works with any MCP-compatible AI tool (Claude Code, Gemini CLI, Cursor, Windsurf, Cline)
+- **Single Server File**: One `wordpress_mcp_server.py` serves all MCP clients
+- **Standard REST API**: Uses WordPress REST API standards — works with any HTTP client
 - **Clean Code**: PSR-4 autoloading, namespaced classes
 
 ### Admin-Friendly
@@ -62,23 +62,26 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 
 Navigate to **Settings > LLM Connector** and:
 1. Check "Enable Connector"
-2. Keep "Read-Only Mode" enabled (recommended)
-3. Select which endpoints to allow
-4. Save settings
+2. Select which endpoints to allow
+3. Save settings
 
 ### 2. Generate an API Key
 
-In this step, you'll create an API key that LLM services (like Claude) will use to authenticate when connecting to your WordPress site.
-
 1. Scroll to the "API Keys" section
-2. Enter a descriptive name for your key (e.g., "Claude Production")
+2. Enter a descriptive name for your key (e.g., "Claude Production" or "Gemini Dev")
 3. Click "Generate API Key"
-4. **Copy and save the key immediately** - it will be partially hidden after you leave the page
-5. You'll use this key in step 3 to configure your LLM client
+4. **Copy and save the key immediately** — it will be partially hidden after you leave the page
+5. You'll use this key to configure your LLM client
 
-### 3. Test the Connection
+### 3. Install Python Dependencies
 
-Use the API key you generated in step 2 to test the connection with cURL:
+The MCP server requires Python 3.10+ and the following packages:
+
+```bash
+pip install mcp httpx pydantic
+```
+
+### 4. Test the Connection
 
 ```bash
 curl -H "X-WP-LLM-API-Key: wpllm_your_api_key_here" \
@@ -91,84 +94,97 @@ Replace `wpllm_your_api_key_here` with the actual API key you copied from WordPr
 
 All endpoints require authentication via the `X-WP-LLM-API-Key` header.
 
-### Health Check (No Auth)
-```
-GET /wp-json/wp-llm-connector/v1/health
-```
-Returns connector status and version.
-
-### Site Information
-```
-GET /wp-json/wp-llm-connector/v1/site-info
-```
-Returns basic site configuration, WordPress version, PHP version, timezone, etc.
-
-### Plugin List
-```
-GET /wp-json/wp-llm-connector/v1/plugins
-```
-Returns all installed plugins with version, status, and author information.
-
-### Theme List
-```
-GET /wp-json/wp-llm-connector/v1/themes
-```
-Returns all installed themes with version and active status.
-
-### System Status
-```
-GET /wp-json/wp-llm-connector/v1/system-status
-```
-Returns comprehensive system information: server configuration, PHP settings, database stats, filesystem permissions.
-
-### User Count
-```
-GET /wp-json/wp-llm-connector/v1/user-count
-```
-Returns user statistics by role.
-
-### Post Statistics
-```
-GET /wp-json/wp-llm-connector/v1/post-stats
-```
-Returns content statistics for all post types.
+| Endpoint | Auth | Description |
+|----------|:----:|-------------|
+| `GET /health` | No | Health check — connector status |
+| `GET /site-info` | Yes | Site name, WP/PHP version, timezone |
+| `GET /plugins` | Yes | All installed plugins with status |
+| `GET /themes` | Yes | All installed themes with active status |
+| `GET /system-status` | Yes | Server, database, memory, filesystem |
+| `GET /user-count` | Yes | User statistics by role |
+| `GET /post-stats` | Yes | Content counts by type and status |
 
 ## Connecting to Claude Code
 
-To use this plugin with Claude Code, you need to configure Claude to use the API key you generated in WordPress.
+For detailed instructions, see **[CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md)**.
 
-**Important:** You do NOT need to generate an API key in Claude or Anthropic. The API key is generated in your WordPress admin and then provided to Claude for authentication.
+### Quick Setup
 
-### Option 1: Manual Configuration
+```bash
+claude mcp add wordpress-site \
+    -e WP_LLM_SITE_URL=https://YOUR-SITE.COM \
+    -e WP_LLM_API_KEY=YOUR_API_KEY \
+    -- python3 /path/to/wordpress_mcp_server.py
+```
 
-Add to your Claude Code MCP settings, using the API key you generated in WordPress (step 2):
+### Manual Configuration (`~/.claude/claude_desktop_config.json`)
 
 ```json
 {
   "mcpServers": {
     "wordpress": {
-      "url": "https://yoursite.com/wp-json/wp-llm-connector/v1/",
-      "transport": "http",
-      "headers": {
-        "X-WP-LLM-API-Key": "wpllm_your_api_key_here"
-      },
-      "description": "WordPress site diagnostics"
+      "command": "python3",
+      "args": ["/path/to/wordpress_mcp_server.py"],
+      "env": {
+        "WP_LLM_SITE_URL": "https://YOUR-SITE.COM",
+        "WP_LLM_API_KEY": "YOUR_API_KEY_HERE"
+      }
     }
   }
 }
 ```
 
-Replace `wpllm_your_api_key_here` with the actual API key from your WordPress LLM Connector settings.
+## Connecting to Gemini CLI
 
-### Option 2: Provider Integration (Future)
+For detailed instructions, see **[GEMINI_CLI_SETUP.md](GEMINI_CLI_SETUP.md)**.
 
-The plugin includes a provider system that will eventually auto-generate MCP configurations for supported LLM services.
+### Quick Setup
+
+```bash
+gemini mcp add wordpress-site \
+    -- python3 /path/to/wordpress_mcp_server.py
+```
+
+Then add environment variables to `~/.gemini/settings.json`.
+
+### Manual Configuration (`~/.gemini/settings.json`)
+
+```json
+{
+  "mcpServers": {
+    "wordpress": {
+      "command": "python3",
+      "args": ["/path/to/wordpress_mcp_server.py"],
+      "env": {
+        "WP_LLM_SITE_URL": "https://YOUR-SITE.COM",
+        "WP_LLM_API_KEY": "YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+Verify the connection by running `/mcp` inside Gemini CLI.
+
+## Other MCP-Compatible Tools
+
+The same `wordpress_mcp_server.py` works with any MCP-compatible AI tool. The only difference is where the configuration lives:
+
+| Tool | Config File |
+|------|------------|
+| Claude Code | `~/.claude/claude_desktop_config.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
+| Cursor | `.cursor/mcp.json` in project root |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| VS Code Copilot | `.vscode/mcp.json` in project root |
+
+All use the same `command` + `args` + `env` pattern shown above.
 
 ## Security Considerations
 
 ### Default Security Posture
 
-- ✅ Read-only mode enforced by default
+- ✅ Read-only mode enforced by design (no write endpoints in codebase)
 - ✅ API key authentication required
 - ✅ Rate limiting enabled (60 req/hour default)
 - ✅ All requests logged
@@ -188,131 +204,55 @@ The plugin includes a provider system that will eventually auto-generate MCP con
 The plugin ONLY exposes data through the endpoints you explicitly enable. It does NOT expose:
 - User passwords or credentials
 - Email content
-- Private post content (unless you build a custom endpoint)
+- Private post content
 - Database credentials
 - Server passwords
 - File contents
 
 ## Architecture
 
-### Directory Structure
-
 ```
 wp-llm-connector/
 ├── wp-llm-connector.php          # Main plugin file
 ├── includes/
-│   ├── Core/
-│   │   ├── Plugin.php            # Main orchestrator
-│   │   ├── Activator.php         # Activation logic
-│   │   └── Deactivator.php       # Deactivation logic
-│   ├── API/
-│   │   └── API_Handler.php       # REST API endpoints
-│   ├── Security/
-│   │   └── Security_Manager.php  # Auth & rate limiting
-│   ├── Admin/
-│   │   └── Admin_Interface.php   # Settings page
-│   └── Providers/
-│       ├── LLM_Provider_Interface.php  # Provider contract
-│       └── Claude_Provider.php         # Claude implementation
-├── assets/
-│   ├── css/
-│   │   └── admin.css             # Admin styling
-│   └── js/
-│       └── admin.js              # Admin JavaScript
+│   ├── Core/                     # Plugin core, activation, deactivation
+│   ├── API/                      # REST API endpoints
+│   ├── Security/                 # Auth, rate limiting, audit logging
+│   ├── Admin/                    # Settings page
+│   └── Providers/                # LLM provider interfaces
+├── mcp/
+│   └── wordpress_mcp_server.py   # Universal MCP server (all clients)
+├── assets/                       # CSS and JS
+├── CLAUDE_CODE_SETUP.md          # Claude Code setup guide
+├── GEMINI_CLI_SETUP.md           # Gemini CLI setup guide
 └── README.md
 ```
-
-### Design Patterns
-
-- **Singleton Pattern**: Core plugin instance
-- **Dependency Injection**: Services passed to constructors
-- **Interface Segregation**: Provider interfaces for extensibility
-- **PSR-4 Autoloading**: Modern PHP class loading
-
-## Extending the Plugin
-
-### Adding New Endpoints
-
-1. Create a new method in `includes/API/API_Handler.php`
-2. Register the route in `register_routes()`
-3. Add the endpoint to the default allowed list in `Activator.php`
-
-Example:
-
-```php
-// Register route
-register_rest_route($this->namespace, '/custom-data', [
-    'methods' => 'GET',
-    'callback' => [$this, 'get_custom_data'],
-    'permission_callback' => [$this, 'check_permissions']
-]);
-
-// Implement callback
-public function get_custom_data(\WP_REST_Request $request) {
-    $data = [
-        // Your custom data here
-    ];
-    
-    $this->log_success($request, 'custom_data');
-    return rest_ensure_response($data);
-}
-```
-
-### Adding New Providers
-
-1. Create a new class in `includes/Providers/`
-2. Implement `LLM_Provider_Interface`
-3. Register in the provider manager (future enhancement)
-
-## Database Schema
-
-### Audit Log Table
-
-```sql
-wp_llm_connector_audit_log
-├── id (bigint, primary key)
-├── timestamp (datetime)
-├── api_key_hash (varchar 64)
-├── endpoint (varchar 255)
-├── request_data (text)
-├── response_code (int)
-├── ip_address (varchar 45)
-└── user_agent (text)
-```
-
-### Options
-
-- `wp_llm_connector_settings`: Main plugin configuration
-- `wp_llm_connector_activated`: Activation timestamp
 
 ## Roadmap
 
 ### Phase 1 (Current - MVP)
 - ✅ Read-only REST API endpoints
 - ✅ API key authentication
-- ✅ Rate limiting
-- ✅ Audit logging
+- ✅ Rate limiting & audit logging
 - ✅ Admin interface
+- ✅ Claude Code MCP integration
+- ✅ Gemini CLI MCP integration
 
 ### Phase 2 (Planned)
-- [ ] Provider-specific configurations in UI
 - [ ] Auto-generated MCP configurations
 - [ ] Webhook support for proactive alerts
 - [ ] Custom endpoint builder (GUI)
-- [ ] Advanced filtering and search in audit logs
+- [ ] Advanced audit log filtering
 
 ### Phase 3 (Future)
-- [ ] Write operations (with explicit user confirmation)
+- [ ] Write operations (with confirmation)
 - [ ] Multi-tenant support for agencies
-- [ ] Integration with popular security plugins
-- [ ] Real-time notifications via WebSockets
+- [ ] Real-time notifications
 - [ ] Dashboard widget for quick stats
 
 ## Contributing
 
-This is an MVP version. Contributions, feedback, and suggestions are welcome!
-
-### Development Setup
+Contributions, feedback, and suggestions are welcome!
 
 1. Clone the repository
 2. Install on a local WordPress instance
@@ -326,27 +266,8 @@ GPL v2 or later
 
 ## Links
 
-- **Author**: [AmIHacked.com](https://sudowp.com)
-- **Development**: [SudoWP.com](https://sudowp.com)
-- **Support**: [WPRepublic.com](https://sudowp.com)
-
-## Disclaimer
-
-This plugin is designed for site diagnostics and administration. While it includes robust security features, always:
-- Use strong, unique API keys
-- Monitor access logs regularly
-- Keep WordPress and all plugins updated
-- Maintain regular backups
-- Use HTTPS/SSL
-
-The authors are not responsible for misuse or unauthorized access resulting from improper configuration.
-
-## Support
-
-For issues, questions, or feature requests:
-1. Check the documentation above
-2. Review the audit logs for errors
-3. Contact via your preferred support channel
+- **Author**: [SudoWP.com](https://sudowp.com)
+- **GitHub**: [github.com/Sudo-WP/llm-connector-for-wp](https://github.com/Sudo-WP/llm-connector-for-wp)
 
 ---
 

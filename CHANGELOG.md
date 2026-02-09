@@ -5,17 +5,36 @@ All notable changes to the WP LLM Connector plugin will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-02-09
+
+### Added
+- Gemini CLI support via the existing MCP server (no new server code needed)
+- GEMINI_CLI_SETUP.md with step-by-step Gemini CLI configuration guide
+- MCP compatibility table in README for additional AI tools (Cursor, Windsurf, Cline, VS Code Copilot)
+- Updated admin Connection Information box to mention both Claude Code and Gemini CLI
+
+### Changed
+- Updated plugin description to reflect multi-LLM support (Claude Code + Gemini CLI)
+- Updated README.md with Gemini CLI setup instructions and quick setup commands
+- Updated readme.txt with Gemini CLI in description, FAQ, and changelog
+- Bumped version to 0.1.2
+
 ## [0.1.1] - 2026-02-07
 
 ### Added
 - Display the path of the audit log database table in the settings page
 - Purge log button to clear all audit log entries with confirmation dialog
 - Shows the number of log entries in the purge button
+- MCP server (mcp/wordpress_mcp_server.py) for Claude Code integration
+- CLAUDE_CODE_SETUP.md with Claude Code setup instructions
+- Read-only mode enforced by design (toggle removed, replaced with static indicator)
 
 ### Changed
 - Improved logging description: changed "Log all API requests Keep an audit trail of all LLM access" to "Log all API requests. Keep an audit trail of all LLM access." (added period for better clarity)
 - Updated plugin description to mention Claude Code LLM support with more LLMs coming in future versions
 - Updated all documentation files (readme.txt, README.md) to reflect Claude Code LLM support
+- Removed read-only toggle checkbox — read-only is now enforced architecturally
+- Reverted cache-busting from development (time() removed from asset versions)
 
 ## [0.1.0] - 2025-02-07
 
@@ -85,16 +104,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **License**: GPL v2 or later
 - **Text Domain**: wp-llm-connector
 
-### Future Enhancements Planned
-- Provider-specific UI configuration
-- Auto-generated MCP configurations
-- Webhook support for proactive monitoring
-- GUI-based custom endpoint builder
-- Advanced audit log filtering
-- Write operations (with confirmation)
-- Real-time notifications
-- Dashboard widgets
-
 ---
 
 ## Version Numbering
@@ -102,27 +111,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MAJOR** version: Incompatible API changes
 - **MINOR** version: New functionality (backward compatible)
 - **PATCH** version: Bug fixes (backward compatible)
-
-## Release Notes
-
-### 0.1.0 - MVP Focus
-
-This initial release focuses on establishing a secure, read-only connection between WordPress sites and LLM agents. The architecture is built for extensibility, allowing future versions to support multiple LLM providers and additional functionality while maintaining security as the top priority.
-
-**Key Design Decisions:**
-- Read-only by default (can be disabled, but not recommended)
-- No endpoints enabled until explicitly selected
-- Strong API key generation (64 characters + prefix)
-- Comprehensive logging for security auditing
-- Rate limiting to prevent abuse
-- Interface-based provider system for future LLM support
-
-**Not Included in MVP:**
-- Write operations
-- Custom endpoint GUI builder
-- Automated MCP configuration export
-- WebSocket support
-- Multi-site network support
-- Advanced analytics dashboard
-
-These features are planned for future releases based on user feedback and real-world usage patterns.
