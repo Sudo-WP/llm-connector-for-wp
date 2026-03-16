@@ -4,7 +4,7 @@ Tags: llm, ai, api, rest-api, diagnostics, mcp, claude, gemini
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.2
+Stable tag: 0.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -89,6 +89,13 @@ All plugin settings, API keys, and audit logs are permanently deleted when the p
 3. Connection information with cURL example.
 
 == Changelog ==
+
+= 0.1.3 =
+* Security: Added table name validation on all database queries to prevent SQL injection.
+* Hardening: Added ABSPATH guards on 6 include files to prevent direct access.
+* Hardening: Applied IP address sanitization on all logged IPs.
+* Hardening: Reduced API key transient TTL for tighter session windows.
+* Fix: Resolved nested form element causing validation errors in admin settings page.
 
 = 0.1.2 =
 * Added: Gemini CLI support via the same MCP server
