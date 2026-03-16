@@ -1,4 +1,8 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 namespace WP_LLM_Connector\Admin;
 
 class Admin_Interface {
@@ -171,9 +175,9 @@ class Admin_Interface {
 					// Use user-specific transient key that persists
 					$transient_key = 'wp_llm_connector_new_key_' . get_current_user_id();
 					$api_key = get_transient( $transient_key );
-					
+
 					if ( $api_key ) {
-						// DON'T delete the transient - let user dismiss it or let it expire after 1 hour
+						// DON'T delete the transient - let user dismiss it or let it expire after 1 minute
 						?>
 						<div class="notice notice-success is-dismissible">
 							<p>
@@ -181,22 +185,22 @@ class Admin_Interface {
 							</p>
 							<p>
 								<span class="wp-llm-key-container">
-									<code id="wp-llm-generated-key" 
-										class="api-key-display wp-llm-api-key-hidden" 
-										data-key="<?php echo esc_attr( $api_key ); ?>" 
+									<code id="wp-llm-generated-key"
+										class="api-key-display wp-llm-api-key-hidden"
+										data-key="<?php echo esc_attr( $api_key ); ?>"
 										title="<?php echo esc_attr__( 'Click Reveal to view the key', 'wp-llm-connector' ); ?>">
 										••••••••••••••••••••••••••••••••
 									</code>
-									<button type="button" 
-										class="button button-primary wp-llm-reveal-key" 
-										data-key="<?php echo esc_attr( $api_key ); ?>" 
+									<button type="button"
+										class="button button-primary wp-llm-reveal-key"
+										data-key="<?php echo esc_attr( $api_key ); ?>"
 										aria-label="<?php echo esc_attr__( 'Reveal key', 'wp-llm-connector' ); ?>">
 										<span class="dashicons dashicons-visibility"></span>
 										<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
 									</button>
-									<button type="button" 
-										class="button button-primary wp-llm-copy-key" 
-										data-key="<?php echo esc_attr( $api_key ); ?>" 
+									<button type="button"
+										class="button button-primary wp-llm-copy-key"
+										data-key="<?php echo esc_attr( $api_key ); ?>"
 										aria-label="<?php echo esc_attr__( 'Copy to clipboard', 'wp-llm-connector' ); ?>">
 										<span class="dashicons dashicons-clipboard"></span>
 										<?php esc_html_e( 'Copy', 'wp-llm-connector' ); ?>
@@ -294,9 +298,13 @@ class Admin_Interface {
 									</p>
 									<?php
 									// Get log count.
+									if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) ) {
+										return;
+									}
 									$log_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
 									if ( $log_count > 0 ) :
 										?>
+										</form><!-- close main settings form to avoid nesting -->
 										<form method="post" action="" style="margin-top: 10px;">
 											<?php wp_nonce_field( 'wp_llm_connector_purge_log', 'wp_llm_connector_log_nonce' ); ?>
 											<button type="submit" name="purge_log" class="button button-secondary"
@@ -307,6 +315,8 @@ class Admin_Interface {
 												?>
 											</button>
 										</form>
+										<form method="post" action="options.php"><!-- reopen main settings form -->
+											<?php settings_fields( 'wp_llm_connector_settings_group' ); ?>
 									<?php endif; ?>
 								</td>
 							</tr>
@@ -434,14 +444,14 @@ class Admin_Interface {
 							<td><?php echo esc_html( $key_data['name'] ?? __( 'Unnamed', 'wp-llm-connector' ) ); ?></td>
 							<td>
 								<div class="wp-llm-key-container">
-									<code class="api-key-display wp-llm-api-key-hidden" 
+									<code class="api-key-display wp-llm-api-key-hidden"
 										id="wp-llm-key-<?php echo esc_attr( $key_id ); ?>"
-										data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..." 
+										data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..."
 										title="<?php echo esc_attr__( 'Full key is hidden for security', 'wp-llm-connector' ); ?>">
 										<?php echo esc_html( $key_data['key_prefix'] ?? '****' ); ?>...
 									</code>
-									<button type="button" 
-										class="button button-small wp-llm-reveal-key" 
+									<button type="button"
+										class="button button-small wp-llm-reveal-key"
 										data-key-id="<?php echo esc_attr( $key_id ); ?>"
 										data-key="••••••••••••••••••••••••••••••••"
 										aria-label="<?php echo esc_attr__( 'Reveal key (not available for existing keys)', 'wp-llm-connector' ); ?>"
@@ -450,8 +460,8 @@ class Admin_Interface {
 										<span class="dashicons dashicons-visibility"></span>
 										<?php esc_html_e( 'Reveal', 'wp-llm-connector' ); ?>
 									</button>
-									<button type="button" 
-										class="button button-small wp-llm-copy-key" 
+									<button type="button"
+										class="button button-small wp-llm-copy-key"
 										data-key="<?php echo esc_attr( $key_data['key_prefix'] ?? '****' ); ?>..."
 										aria-label="<?php echo esc_attr__( 'Copy key prefix only', 'wp-llm-connector' ); ?>"
 										disabled
@@ -549,15 +559,15 @@ class Admin_Interface {
 
 			// Update the option.
 			update_option( 'wp_llm_connector_settings', $settings );
-			
+
 			// Verify the key was actually saved by reading it back.
 			$verified_settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $verified_settings['api_keys'][ $key_id ] ) ) {
 				// Success! Store the generated key in a user-specific transient.
-				// Use 1 hour expiration and don't delete it immediately after display
+				// Use 1 minute expiration to minimize exposure of raw API key
 				$transient_key = 'wp_llm_connector_new_key_' . get_current_user_id();
-				set_transient( $transient_key, $api_key, HOUR_IN_SECONDS );
-				
+				set_transient( $transient_key, $api_key, 60 );
+
 				// Redirect to show the key.
 				$redirect_url = add_query_arg(
 					array(
@@ -587,10 +597,10 @@ class Admin_Interface {
 			$settings = get_option( 'wp_llm_connector_settings', array() );
 			if ( isset( $settings['api_keys'][ $key_id ] ) ) {
 				unset( $settings['api_keys'][ $key_id ] );
-				
+
 				// Update the option.
 				update_option( 'wp_llm_connector_settings', $settings );
-				
+
 				// Verify the key was actually removed by reading it back.
 				$verified_settings = get_option( 'wp_llm_connector_settings', array() );
 				if ( ! isset( $verified_settings['api_keys'][ $key_id ] ) ) {
@@ -648,6 +658,11 @@ class Admin_Interface {
 		if ( isset( $_POST['purge_log'] ) && check_admin_referer( 'wp_llm_connector_purge_log', 'wp_llm_connector_log_nonce' ) ) {
 			global $wpdb;
 			$table_name = $wpdb->prefix . 'llm_connector_audit_log';
+
+			// Validate table name.
+			if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) ) {
+				return;
+			}
 
 			// Truncate the audit log table.
 			$wpdb->query( "TRUNCATE TABLE {$table_name}" );

@@ -1,4 +1,8 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 namespace WP_LLM_Connector\Core;
 
 use WP_LLM_Connector\Security\Security_Manager;
@@ -50,6 +54,11 @@ class Plugin {
 	public function cleanup_old_logs() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'llm_connector_audit_log';
+
+		// Validate table name.
+		if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) ) {
+			return;
+		}
 
 		$wpdb->query(
 			$wpdb->prepare(

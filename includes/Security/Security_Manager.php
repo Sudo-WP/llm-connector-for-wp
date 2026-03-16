@@ -1,4 +1,8 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 namespace WP_LLM_Connector\Security;
 
 class Security_Manager {
@@ -70,7 +74,7 @@ class Security_Manager {
 
 		if ( false === $requests ) {
 			// First request — set the window.
-			set_transient( $transient_key, 1, HOUR_IN_SECONDS );
+			set_transient( $transient_key, 1, 60 );
 			return true;
 		}
 
@@ -111,6 +115,11 @@ class Security_Manager {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'llm_connector_audit_log';
 
+		// Validate table name.
+		if ( ! preg_match( '/^[a-zA-Z0-9_]+$/', $table_name ) ) {
+			return;
+		}
+
 		$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] )
 			? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) )
 			: '';
@@ -141,7 +150,7 @@ class Security_Manager {
 		// Only trust proxy headers if the request comes from a known proxy.
 		// Cloudflare IPs or a configured reverse proxy should be checked here.
 		// For safety, default to REMOTE_ADDR.
-		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
 
 		// Handle comma-separated IPs (take first one).
 		if ( strpos( $ip, ',' ) !== false ) {
