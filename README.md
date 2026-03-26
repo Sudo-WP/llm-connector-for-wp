@@ -1,43 +1,55 @@
 # LLM Connector for WordPress
 
-**Version:** 0.1.2 (MVP)  
-**Author:** SudoWP.com  
+**Version:** 2.0.0
+**Author:** SudoWP.com
 **License:** GPL v2 or later
 
-A secure WordPress plugin that enables LLM agents to connect to your WordPress site in read-only mode for diagnostics, troubleshooting, and administration. Currently supports Claude Code and Gemini CLI via MCP (Model Context Protocol), with more LLM integrations coming in future versions.
+A secure WordPress plugin that connects your site to LLM agents and the WordPress AI ecosystem. Provides read-only site diagnostics via REST API and MCP, multi-provider AI text generation (Anthropic, OpenAI, Gemini), and forward-compatible integration with the WP 7.0 AI Client API and WP 6.9+ Abilities API.
 
 ## Purpose
 
-This plugin creates a bridge between your WordPress site and AI LLM agents, allowing them to:
-- Diagnose site issues
+This plugin creates a bridge between your WordPress site and AI tools, allowing them to:
+- Diagnose site issues and review system health
 - Analyze plugin and theme configurations
-- Review system health and performance
 - Gather statistics and metadata
-- Assist with troubleshooting
+- Generate text via configured LLM providers (Anthropic Claude, OpenAI GPT, Google Gemini)
+- Register as a provider in the WP 7.0 AI Client ecosystem
+- Expose site capabilities through the WP 6.9+ Abilities API
 
-**All in a secure, read-only mode by default.**
+**All diagnostic endpoints are read-only by design. AI text generation requires explicit provider configuration and admin-level authentication.**
 
 ## Key Features
 
 ### Security First
-- **API Key Authentication**: Secure token-based access control
+- **API Key Authentication**: Secure token-based access control with SHA-256 hashed storage
 - **Read-Only by Design**: Enforced architecturally — no write endpoints exist in the codebase
-- **Rate Limiting**: Configurable request limits per API key
-- **Audit Logging**: Full request logging for security monitoring
+- **Rate Limiting**: Configurable request limits per API key (1–1,000 req/hour)
+- **Audit Logging**: Full request logging with 90-day automatic cleanup
 - **IP Tracking**: Monitor where requests originate
 - **Granular Permissions**: Enable only the endpoints you need
 
-### Extensible Architecture
-- **MCP Compatible**: Works with any MCP-compatible AI tool (Claude Code, Gemini CLI, Cursor, Windsurf, Cline)
+### Multi-Provider AI Integration (v2.0)
+- **Anthropic (Claude)**: claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001
+- **OpenAI**: gpt-4o, gpt-4o-mini, gpt-4-turbo
+- **Google Gemini**: gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash
+- **Capability-based routing**: Request text generation by capability, not just provider name
+- **Extensible**: Register custom providers via `wp_llm_connector_register_providers` action
+
+### WordPress AI Stack (v2.0)
+- **WP 7.0 AI Client API**: Providers auto-register when the AI Client is available
+- **WP 6.9+ Abilities API**: 8 abilities registered under `llm-connector` category
+- **Backward Compatible**: All new hooks are guarded — plugin works on WP 5.8+
+
+### MCP Compatible
 - **Single Server File**: One `wordpress_mcp_server.py` serves all MCP clients
+- **Works with**: Claude Code, Gemini CLI, Cursor, Windsurf, Cline, VS Code Copilot
 - **Standard REST API**: Uses WordPress REST API standards — works with any HTTP client
-- **Clean Code**: PSR-4 autoloading, namespaced classes
 
 ### Admin-Friendly
-- **Simple Interface**: Easy-to-use WordPress admin panel
-- **One-Click API Keys**: Generate secure keys instantly
+- **Tabbed Interface**: General settings, AI Providers, and API Keys on separate tabs
+- **Per-Provider Configuration**: Enable/disable toggle, API key field, default model selector
+- **One-Click API Keys**: Generate secure connector API keys instantly
 - **Visual Feedback**: Clear status indicators and messages
-- **Documentation Built-In**: Connection examples in the admin
 
 ## Installation
 
@@ -49,6 +61,7 @@ This plugin creates a bridge between your WordPress site and AI LLM agents, allo
 4. Navigate to **Settings > LLM Connector**
 5. Generate an API key (this key will be used by LLM services to authenticate with your WordPress site)
 6. Configure your allowed endpoints
+7. (Optional) Go to the **AI Providers** tab to configure Anthropic, OpenAI, or Gemini
 
 ### Requirements
 
@@ -67,13 +80,21 @@ Navigate to **Settings > LLM Connector** and:
 
 ### 2. Generate an API Key
 
-1. Scroll to the "API Keys" section
+1. Go to the **API Keys** tab
 2. Enter a descriptive name for your key (e.g., "Claude Production" or "Gemini Dev")
 3. Click "Generate API Key"
 4. **Copy and save the key immediately** — it will be partially hidden after you leave the page
 5. You'll use this key to configure your LLM client
 
-### 3. Install Python Dependencies
+### 3. Configure AI Providers (Optional)
+
+1. Go to the **AI Providers** tab
+2. Enable the providers you want (Anthropic, OpenAI, and/or Gemini)
+3. Enter your API key for each enabled provider
+4. Select a default model
+5. Save Provider Settings
+
+### 4. Install Python Dependencies (for MCP)
 
 The MCP server requires Python 3.10+ and the following packages:
 
@@ -81,7 +102,7 @@ The MCP server requires Python 3.10+ and the following packages:
 pip install mcp httpx pydantic
 ```
 
-### 4. Test the Connection
+### 5. Test the Connection
 
 ```bash
 curl -H "X-WP-LLM-API-Key: wpllm_your_api_key_here" \
@@ -90,7 +111,7 @@ curl -H "X-WP-LLM-API-Key: wpllm_your_api_key_here" \
 
 Replace `wpllm_your_api_key_here` with the actual API key you copied from WordPress.
 
-## Available Endpoints
+## Available REST Endpoints
 
 All endpoints require authentication via the `X-WP-LLM-API-Key` header.
 
@@ -103,6 +124,23 @@ All endpoints require authentication via the `X-WP-LLM-API-Key` header.
 | `GET /system-status` | Yes | Server, database, memory, filesystem |
 | `GET /user-count` | Yes | User statistics by role |
 | `GET /post-stats` | Yes | Content counts by type and status |
+
+## Abilities (WP 6.9+)
+
+When running on WordPress 6.9 or later with the Abilities API available, the plugin registers these abilities under the `llm-connector` category:
+
+| Ability | MCP Public | Description |
+|---------|:----------:|-------------|
+| `llm-connector/site-info` | Yes | Site information |
+| `llm-connector/list-plugins` | Yes | Installed plugins |
+| `llm-connector/system-status` | Yes | System diagnostics |
+| `llm-connector/user-count` | Yes | User statistics |
+| `llm-connector/post-stats` | Yes | Content statistics |
+| `llm-connector/list-providers` | Yes | Registered LLM providers |
+| `llm-connector/provider-status` | Yes | Provider configuration status |
+| `llm-connector/generate-text` | No | Text generation (requires auth) |
+
+All abilities require `manage_options` capability and the connector to be enabled.
 
 ## Connecting to Claude Code
 
@@ -180,15 +218,29 @@ The same `wordpress_mcp_server.py` works with any MCP-compatible AI tool. The on
 
 All use the same `command` + `args` + `env` pattern shown above.
 
+## Provider Extensibility
+
+Third-party plugins can register additional LLM providers:
+
+```php
+add_action( 'wp_llm_connector_register_providers', function( $registry ) {
+    $provider = new My_Custom_Provider(); // Must implement LLM_Provider_Interface
+    $provider->init( $config );
+});
+```
+
+The `LLM_Provider_Interface` requires these methods: `init()`, `validate_credentials()`, `get_provider_name()`, `get_provider_display_name()`, `get_config_fields()`, `supports_read_only()`, `get_capabilities()`, `get_supported_models()`, `generate_text()`, `register_with_wp_ai_client()`.
+
 ## Security Considerations
 
 ### Default Security Posture
 
-- ✅ Read-only mode enforced by design (no write endpoints in codebase)
-- ✅ API key authentication required
-- ✅ Rate limiting enabled (60 req/hour default)
-- ✅ All requests logged
-- ✅ No endpoints enabled by default
+- Read-only mode enforced by design (no write endpoints in codebase)
+- API key authentication required for all data endpoints
+- Rate limiting enabled (60 req/hour default)
+- All requests logged with IP tracking
+- No endpoints enabled by default
+- Provider API keys stored server-side only, never exposed to the browser
 
 ### Best Practices
 
@@ -198,6 +250,7 @@ All use the same `command` + `args` + `env` pattern shown above.
 4. **Rotate Keys Regularly**: Revoke and regenerate API keys periodically
 5. **Use HTTPS**: Always use SSL/TLS for your WordPress site
 6. **Limit Rate Limits**: Adjust based on your actual needs
+7. **Protect Provider API Keys**: Treat provider API keys (Anthropic, OpenAI, Gemini) like passwords
 
 ### What Data is Exposed?
 
@@ -213,13 +266,20 @@ The plugin ONLY exposes data through the endpoints you explicitly enable. It doe
 
 ```
 wp-llm-connector/
-├── wp-llm-connector.php          # Main plugin file
+├── wp-llm-connector.php          # Main plugin file (v2.0.0)
 ├── includes/
-│   ├── Core/                     # Plugin core, activation, deactivation
-│   ├── API/                      # REST API endpoints
+│   ├── Core/                     # Plugin bootstrap, activation, deactivation
+│   ├── API/                      # REST API endpoints (v1, unchanged)
 │   ├── Security/                 # Auth, rate limiting, audit logging
-│   ├── Admin/                    # Settings page
-│   └── Providers/                # LLM provider interfaces
+│   ├── Admin/                    # Tabbed settings page (General | AI Providers | API Keys)
+│   ├── Providers/                # LLM provider system
+│   │   ├── LLM_Provider_Interface.php   # Provider contract
+│   │   ├── Anthropic_Provider.php       # Claude API integration
+│   │   ├── OpenAI_Provider.php          # OpenAI API integration
+│   │   ├── Gemini_Provider.php          # Gemini API integration
+│   │   └── Provider_Registry.php        # Provider lifecycle & lookup
+│   └── Abilities/                # WP 6.9+ Abilities API integration
+│       └── Abilities_Manager.php
 ├── mcp/
 │   └── wordpress_mcp_server.py   # Universal MCP server (all clients)
 ├── assets/                       # CSS and JS
@@ -228,27 +288,40 @@ wp-llm-connector/
 └── README.md
 ```
 
-## Roadmap
+## Changelog
 
-### Phase 1 (Current - MVP)
-- ✅ Read-only REST API endpoints
-- ✅ API key authentication
-- ✅ Rate limiting & audit logging
-- ✅ Admin interface
-- ✅ Claude Code MCP integration
-- ✅ Gemini CLI MCP integration
+### 2.0.0 (2026-03-26)
+- **Added**: Multi-provider system — Anthropic (Claude), OpenAI, and Google Gemini with `generate_text()` support
+- **Added**: Provider Registry with capability-based provider selection and extensibility hook
+- **Added**: WP 7.0 AI Client API integration — providers auto-register when available
+- **Added**: WP 6.9+ Abilities API integration with 8 abilities
+- **Added**: AI Providers admin tab with per-provider enable toggle, API key, and model selector
+- **Added**: Tabbed admin navigation (General | AI Providers | API Keys)
+- **Added**: `provider` column and index in audit log table (dbDelta upgrade-safe)
+- **Added**: Optional Composer autoloader support
+- **Changed**: Database schema version bumped to 2.0
+- **Compatibility**: All new hooks guarded — plugin works on WP 5.8+
 
-### Phase 2 (Planned)
-- [ ] Auto-generated MCP configurations
-- [ ] Webhook support for proactive alerts
-- [ ] Custom endpoint builder (GUI)
-- [ ] Advanced audit log filtering
+### 0.1.3 (2026-03-16)
+- **Security**: Table name validation on all database queries to prevent SQL injection
+- **Hardening**: ABSPATH guards on all include files
+- **Hardening**: IP address sanitization on all logged IPs
+- **Hardening**: Reduced API key transient TTL
+- **Fix**: Resolved nested form element in admin settings page
 
-### Phase 3 (Future)
-- [ ] Write operations (with confirmation)
-- [ ] Multi-tenant support for agencies
-- [ ] Real-time notifications
-- [ ] Dashboard widget for quick stats
+### 0.1.2 (2026-02-09)
+- **Added**: Gemini CLI support via the same MCP server
+- **Added**: GEMINI_CLI_SETUP.md setup guide
+- **Added**: MCP compatibility table for additional AI tools
+
+### 0.1.1 (2026-02-07)
+- **Added**: MCP server for Claude Code integration
+- **Added**: CLAUDE_CODE_SETUP.md setup guide
+- **Added**: Audit log display and purge button in admin
+- **Changed**: Read-only mode enforced by design (toggle removed)
+
+### 0.1.0 (2025-02-07)
+- Initial release with REST API endpoints, API key auth, rate limiting, audit logging, and admin interface
 
 ## Contributing
 
