@@ -95,6 +95,98 @@ jQuery(document).ready(function($) {
 	}
 
 	// ========================================
+	// Reveal / Hide key toggle
+	// ========================================
+	$(document).on('click', '.wp-llm-reveal-key:not(:disabled)', function(e) {
+		e.preventDefault();
+
+		var $button = $(this);
+		var $container = $button.closest('.wp-llm-key-container');
+		var $code = $container.find('code.api-key-display');
+		var $icon = $button.find('.dashicons');
+		var key = $button.attr('data-key');
+
+		if ($button.data('revealed')) {
+			// Hide: restore masked display.
+			$code.text('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022');
+			$code.addClass('wp-llm-api-key-hidden');
+			$code.attr('title', wpLlmConnector.i18n.hiddenKeyTitle);
+			$icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+			$button.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' ' + wpLlmConnector.i18n.revealText);
+			$button.attr('aria-label', wpLlmConnector.i18n.revealKeyLabel);
+			$button.data('revealed', false);
+		} else {
+			// Reveal: show the key.
+			$code.text(key);
+			$code.removeClass('wp-llm-api-key-hidden');
+			$code.attr('title', wpLlmConnector.i18n.revealedKeyTitle);
+			$icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+			$button.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' ' + wpLlmConnector.i18n.hideText);
+			$button.attr('aria-label', wpLlmConnector.i18n.hideKeyLabel);
+			$button.data('revealed', true);
+		}
+	});
+
+	// ========================================
+	// Copy key to clipboard
+	// ========================================
+	$(document).on('click', '.wp-llm-copy-key:not(:disabled)', function(e) {
+		e.preventDefault();
+
+		var $button = $(this);
+		var apiKey = $button.attr('data-key');
+		var $icon = $button.find('.dashicons');
+
+		if (!apiKey || apiKey.length === 0) {
+			return;
+		}
+
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(apiKey).then(function() {
+				showKeyCopySuccess($button, $icon);
+			}).catch(function() {
+				fallbackKeyCopy(apiKey, $button, $icon);
+			});
+		} else {
+			fallbackKeyCopy(apiKey, $button, $icon);
+		}
+	});
+
+	function showKeyCopySuccess($button, $icon) {
+		$button.addClass('copied');
+		$icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
+		$button.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' ' + wpLlmConnector.i18n.copiedText);
+
+		setTimeout(function() {
+			$button.removeClass('copied');
+			$icon.removeClass('dashicons-yes').addClass('dashicons-clipboard');
+			$button.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' ' + wpLlmConnector.i18n.copyText);
+		}, 2000);
+	}
+
+	function fallbackKeyCopy(text, $button, $icon) {
+		var $temp = $('<textarea>');
+		var success = false;
+
+		$('body').append($temp);
+		$temp.val(text).select();
+
+		try {
+			success = document.execCommand('copy');
+		} catch (err) {
+			success = false;
+		}
+
+		$temp.remove();
+
+		if (success) {
+			showKeyCopySuccess($button, $icon);
+		} else {
+			alert(wpLlmConnector.i18n.copyError);
+		}
+	}
+
+	// ========================================
 	// Scroll to new key row if present
 	// ========================================
 	var $newKeyRow = $('.wp-llm-new-key-row');
