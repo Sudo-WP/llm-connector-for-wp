@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 """
 WordPress LLM Connector MCP Server
-
-An MCP server that connects Claude Code to a WordPress site
-via the WP LLM Connector plugin REST API.
-
-Usage:
-    python wordpress_mcp.py
+Compatible with MCP 1.6+ and Pydantic 2.10+
 
 Configuration via environment variables:
     WP_LLM_SITE_URL  - WordPress site URL (e.g., https://example.com)
@@ -15,510 +10,225 @@ Configuration via environment variables:
 
 import json
 import os
-import sys
-from typing import Optional, Dict, Any
-from enum import Enum
-from contextlib import asynccontextmanager
+from typing import Optional
 
 import httpx
-from pydantic import BaseModel, Field, ConfigDict
 from mcp.server.fastmcp import FastMCP
 
-# ========================================
-# Configuration
-# ========================================
+# ── Configuration ─────────────────────────────────────────────────────────────
 
 SITE_URL = os.environ.get("WP_LLM_SITE_URL", "").rstrip("/")
-API_KEY = os.environ.get("WP_LLM_API_KEY", "")
-BASE_PATH = "/wp-json/wp-llm-connector/v1"
-REQUEST_TIMEOUT = 30.0
-USER_AGENT = "WP-LLM-Connector-MCP/1.0"
+API_KEY  = os.environ.get("WP_LLM_API_KEY", "")
+BASE     = "/wp-json/wp-llm-connector/v1"
+TIMEOUT  = 30.0
+UA       = "WP-LLM-Connector-MCP/2.0"
 
+mcp = FastMCP("wordpress")
 
-# ========================================
-# HTTP Client (shared)
-# ========================================
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def wp_api_request(endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Make an authenticated request to the WordPress LLM Connector API.
-
-    Args:
-        endpoint: API endpoint path (e.g., '/site-info').
-        params: Optional query parameters.
-
-    Returns:
-        Parsed JSON response as a dictionary.
-
-    Raises:
-        ValueError: If configuration is missing.
-        httpx.HTTPStatusError: If the API returns an error status.
-    """
+async def _get(endpoint: str) -> dict:
     if not SITE_URL:
-        raise ValueError(
-            "WP_LLM_SITE_URL environment variable is not set. "
-            "Set it to your WordPress site URL (e.g., https://example.com)."
-        )
+        raise ValueError("WP_LLM_SITE_URL is not set.")
     if not API_KEY:
-        raise ValueError(
-            "WP_LLM_API_KEY environment variable is not set. "
-            "Generate an API key in WordPress > Settings > LLM Connector."
-        )
-
-    url = f"{SITE_URL}{BASE_PATH}{endpoint}"
-    headers = {
-        "X-WP-LLM-API-Key": API_KEY,
-        "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-    }
-
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        response = await client.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        return response.json()
+        raise ValueError("WP_LLM_API_KEY is not set.")
+    url     = f"{SITE_URL}{BASE}{endpoint}"
+    headers = {"X-WP-LLM-API-Key": API_KEY, "User-Agent": UA, "Accept": "application/json"}
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        r = await client.get(url, headers=headers)
+        r.raise_for_status()
+        return r.json()
 
 
-def handle_api_error(e: Exception) -> str:
-    """Format API errors into actionable messages."""
+def _err(e: Exception) -> str:
     if isinstance(e, ValueError):
-        return f"Configuration error: {e}"
+        return f"Config error: {e}"
     if isinstance(e, httpx.HTTPStatusError):
-        status = e.response.status_code
-        if status == 401:
-            return "Authentication failed. Check that your WP_LLM_API_KEY is correct and the key is active in WordPress > Settings > LLM Connector."
-        if status == 403:
-            return "Access denied. The API key may be revoked, or the connector is disabled in WordPress settings."
-        if status == 404:
-            return f"Endpoint not found. Verify the WP LLM Connector plugin is active and the endpoint exists. URL: {e.request.url}"
-        if status == 429:
-            return "Rate limit exceeded. Wait a moment and try again, or increase the rate limit in WordPress > Settings > LLM Connector."
-        return f"API error (HTTP {status}): {e.response.text[:200]}"
+        s = e.response.status_code
+        msgs = {
+            401: "Authentication failed — check WP_LLM_API_KEY.",
+            403: "Access denied — connector may be disabled.",
+            404: f"Endpoint not found: {e.request.url}",
+            429: "Rate limit exceeded — try again later.",
+        }
+        return msgs.get(s, f"HTTP {s}: {e.response.text[:200]}")
     if isinstance(e, httpx.ConnectError):
-        return f"Cannot connect to {SITE_URL}. Check that the URL is correct and the site is accessible."
+        return f"Cannot connect to {SITE_URL}"
     if isinstance(e, httpx.TimeoutException):
-        return f"Request timed out after {REQUEST_TIMEOUT}s. The site may be slow or unresponsive."
-    return f"Unexpected error: {type(e).__name__}: {e}"
+        return f"Request timed out after {TIMEOUT}s"
+    return f"{type(e).__name__}: {e}"
 
 
-def format_json(data: Any) -> str:
-    """Format data as pretty-printed JSON."""
+def _json(data) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False)
 
+# ── Tools ─────────────────────────────────────────────────────────────────────
 
-def format_plugins_markdown(plugins: list) -> str:
-    """Format plugin list as readable Markdown."""
-    active = [p for p in plugins if p.get("active")]
-    inactive = [p for p in plugins if not p.get("active")]
-
-    lines = [f"# Plugins ({len(plugins)} total, {len(active)} active)\n"]
-
-    if active:
-        lines.append("## Active Plugins\n")
-        for p in sorted(active, key=lambda x: x.get("name", "")):
-            lines.append(f"- **{p['name']}** v{p.get('version', '?')} — {p.get('description', '')[:80]}")
-
-    if inactive:
-        lines.append(f"\n## Inactive Plugins ({len(inactive)})\n")
-        for p in sorted(inactive, key=lambda x: x.get("name", "")):
-            lines.append(f"- ~~{p['name']}~~ v{p.get('version', '?')}")
-
-    return "\n".join(lines)
-
-
-def format_site_info_markdown(data: dict) -> str:
-    """Format site info as readable Markdown."""
-    return f"""# {data.get('site_name', 'WordPress Site')}
-
-- **URL**: {data.get('site_url', 'N/A')}
-- **WordPress**: {data.get('wp_version', '?')}
-- **PHP**: {data.get('php_version', '?')}
-- **Language**: {data.get('language', '?')}
-- **Timezone**: {data.get('timezone', '?')}
-- **Multisite**: {'Yes' if data.get('is_multisite') else 'No'}
-- **Charset**: {data.get('charset', '?')}"""
-
-
-def format_system_status_markdown(data: dict) -> str:
-    """Format system status as readable Markdown."""
-    server = data.get("server", {})
-    wp = data.get("wordpress", {})
-    db = data.get("database", {})
-    fs = data.get("filesystem", {})
-
-    return f"""# System Status
-
-## Server
-- **Software**: {server.get('software', '?')}
-- **PHP**: {server.get('php_version', '?')}
-- **MySQL**: {server.get('mysql_version', '?')}
-- **Memory Limit**: {server.get('memory_limit', '?')}
-- **Max Execution Time**: {server.get('max_execution_time', '?')}s
-- **Upload Max**: {server.get('upload_max_filesize', '?')}
-
-## WordPress
-- **Version**: {wp.get('version', '?')}
-- **Debug Mode**: {'On' if wp.get('debug_mode') else 'Off'}
-- **WP Memory Limit**: {wp.get('memory_limit', '?')}
-
-## Database
-- **Tables**: {db.get('tables_count', '?')}
-- **Size**: {db.get('database_size', '?')}
-
-## Filesystem
-- **Uploads Writable**: {'✅' if fs.get('uploads_writable') else '❌'}
-- **Content Writable**: {'✅' if fs.get('content_writable') else '❌'}"""
-
-
-# ========================================
-# Response Format
-# ========================================
-
-class ResponseFormat(str, Enum):
-    """Output format for tool responses."""
-    MARKDOWN = "markdown"
-    JSON = "json"
-
-
-# ========================================
-# MCP Server
-# ========================================
-
-mcp = FastMCP("wordpress_mcp")
-
-
-# ========================================
-# Tools
-# ========================================
-
-class WpHealthInput(BaseModel):
-    """Input for health check (no parameters needed)."""
-    model_config = ConfigDict(extra="forbid")
-
-
-@mcp.tool(
-    name="wp_health_check",
-    annotations={
-        "title": "WordPress Health Check",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_health_check(params: WpHealthInput) -> str:
-    """Check if the WordPress site and LLM Connector API are reachable.
-
-    This is a quick connectivity test that does not require authentication.
-    Use this first to verify the connection before making other API calls.
-
-    Returns:
-        str: JSON with status and timestamp if healthy, or error message.
-    """
+@mcp.tool()
+async def wp_health_check() -> str:
+    """Check if the WordPress site and LLM Connector plugin are reachable. No authentication required."""
     try:
-        # Health endpoint doesn't require auth.
-        url = f"{SITE_URL}{BASE_PATH}/health"
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.get(url, headers={"User-Agent": USER_AGENT})
-            response.raise_for_status()
-            data = response.json()
-        return format_json({"status": "connected", "site": SITE_URL, **data})
+        url = f"{SITE_URL}{BASE}/health"
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            r = await client.get(url, headers={"User-Agent": UA})
+            r.raise_for_status()
+        return _json({"status": "connected", "site": SITE_URL, **r.json()})
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpSiteInfoInput(BaseModel):
-    """Input for site information retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-    response_format: ResponseFormat = Field(
-        default=ResponseFormat.MARKDOWN,
-        description="Output format: 'markdown' for readable or 'json' for structured data",
-    )
-
-
-@mcp.tool(
-    name="wp_get_site_info",
-    annotations={
-        "title": "Get WordPress Site Information",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_get_site_info(params: WpSiteInfoInput) -> str:
-    """Get basic information about the WordPress site.
-
-    Returns site name, URL, WordPress version, PHP version, language,
-    timezone, and multisite status.
-
+@mcp.tool()
+async def wp_get_site_info(format: str = "markdown") -> str:
+    """Get basic WordPress site information: name, URL, WP version, PHP version, timezone.
+    
     Args:
-        params: Contains response_format (markdown or json).
-
-    Returns:
-        str: Site information in the requested format.
+        format: Output format — 'markdown' (default) or 'json'
     """
     try:
-        data = await wp_api_request("/site-info")
-        if params.response_format == ResponseFormat.JSON:
-            return format_json(data)
-        return format_site_info_markdown(data)
+        d = await _get("/site-info")
+        if format == "json":
+            return _json(d)
+        return (
+            f"# {d.get('site_name', 'WordPress Site')}\n\n"
+            f"- **URL**: {d.get('site_url')}\n"
+            f"- **WordPress**: {d.get('wp_version')}\n"
+            f"- **PHP**: {d.get('php_version')}\n"
+            f"- **Timezone**: {d.get('timezone')}\n"
+            f"- **Language**: {d.get('language')}\n"
+            f"- **Multisite**: {'Yes' if d.get('is_multisite') else 'No'}\n"
+        )
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpPluginsInput(BaseModel):
-    """Input for plugin list retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-    response_format: ResponseFormat = Field(
-        default=ResponseFormat.MARKDOWN,
-        description="Output format: 'markdown' for readable or 'json' for structured data",
-    )
-    active_only: bool = Field(
-        default=False,
-        description="If true, only return active plugins",
-    )
-
-
-@mcp.tool(
-    name="wp_list_plugins",
-    annotations={
-        "title": "List WordPress Plugins",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_list_plugins(params: WpPluginsInput) -> str:
-    """List all plugins installed on the WordPress site.
-
-    Returns plugin name, version, author, description, and active status
-    for each plugin. Can filter to show only active plugins.
-
+@mcp.tool()
+async def wp_list_plugins(active_only: bool = False, format: str = "markdown") -> str:
+    """List all installed WordPress plugins with version and active status.
+    
     Args:
-        params: Contains response_format and active_only filter.
-
-    Returns:
-        str: Plugin list in the requested format.
+        active_only: If True, only return active plugins
+        format: Output format — 'markdown' (default) or 'json'
     """
     try:
-        data = await wp_api_request("/plugins")
-        if params.active_only:
+        data = await _get("/plugins")
+        if active_only:
             data = [p for p in data if p.get("active")]
-        if params.response_format == ResponseFormat.JSON:
-            return format_json(data)
-        return format_plugins_markdown(data)
+        if format == "json":
+            return _json(data)
+        active   = [p for p in data if p.get("active")]
+        inactive = [p for p in data if not p.get("active")]
+        lines = [f"# Plugins ({len(data)} total, {len(active)} active)\n"]
+        if active:
+            lines.append("## Active\n")
+            for p in sorted(active, key=lambda x: x.get("name", "")):
+                lines.append(f"- **{p['name']}** v{p.get('version','?')}")
+        if inactive and not active_only:
+            lines.append(f"\n## Inactive ({len(inactive)})\n")
+            for p in sorted(inactive, key=lambda x: x.get("name", "")):
+                lines.append(f"- ~~{p['name']}~~ v{p.get('version','?')}")
+        return "\n".join(lines)
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpThemesInput(BaseModel):
-    """Input for theme list retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-    response_format: ResponseFormat = Field(
-        default=ResponseFormat.JSON,
-        description="Output format: 'markdown' for readable or 'json' for structured data",
-    )
-
-
-@mcp.tool(
-    name="wp_list_themes",
-    annotations={
-        "title": "List WordPress Themes",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_list_themes(params: WpThemesInput) -> str:
-    """List all themes installed on the WordPress site.
-
-    Returns theme name, version, author, and active status.
-
+@mcp.tool()
+async def wp_list_themes(format: str = "json") -> str:
+    """List all installed WordPress themes with active status.
+    
     Args:
-        params: Contains response_format.
-
-    Returns:
-        str: Theme list in the requested format.
+        format: Output format — 'json' (default) or 'markdown'
     """
     try:
-        data = await wp_api_request("/themes")
-        if params.response_format == ResponseFormat.JSON:
-            return format_json(data)
+        data = await _get("/themes")
+        if format == "json":
+            return _json(data)
         lines = ["# Themes\n"]
         for t in data:
             active = " **(Active)**" if t.get("active") else ""
-            lines.append(f"- **{t.get('name', '?')}** v{t.get('version', '?')}{active} — by {t.get('author', '?')}")
+            lines.append(f"- **{t.get('name','?')}** v{t.get('version','?')}{active} — {t.get('author','?')}")
         return "\n".join(lines)
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpSystemStatusInput(BaseModel):
-    """Input for system status retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-    response_format: ResponseFormat = Field(
-        default=ResponseFormat.MARKDOWN,
-        description="Output format: 'markdown' for readable or 'json' for structured data",
-    )
-
-
-@mcp.tool(
-    name="wp_get_system_status",
-    annotations={
-        "title": "Get WordPress System Status",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_get_system_status(params: WpSystemStatusInput) -> str:
-    """Get detailed system status of the WordPress server.
-
-    Returns server software, PHP/MySQL versions, memory limits,
-    execution limits, database size, and filesystem status.
-
+@mcp.tool()
+async def wp_get_system_status(format: str = "markdown") -> str:
+    """Get detailed WordPress server status: PHP, MySQL, memory, filesystem.
+    
     Args:
-        params: Contains response_format.
-
-    Returns:
-        str: System status in the requested format.
+        format: Output format — 'markdown' (default) or 'json'
     """
     try:
-        data = await wp_api_request("/system-status")
-        if params.response_format == ResponseFormat.JSON:
-            return format_json(data)
-        return format_system_status_markdown(data)
+        d = await _get("/system-status")
+        if format == "json":
+            return _json(d)
+        s  = d.get("server", {})
+        wp = d.get("wordpress", {})
+        db = d.get("database", {})
+        fs = d.get("filesystem", {})
+        return (
+            f"# System Status\n\n"
+            f"## Server\n"
+            f"- **Software**: {s.get('software')}\n"
+            f"- **PHP**: {s.get('php_version')}\n"
+            f"- **MySQL**: {s.get('mysql_version')}\n"
+            f"- **Memory limit**: {s.get('memory_limit')}\n"
+            f"- **Max execution**: {s.get('max_execution_time')}s\n\n"
+            f"## WordPress\n"
+            f"- **Version**: {wp.get('version')}\n"
+            f"- **Debug mode**: {'On' if wp.get('debug_mode') else 'Off'}\n"
+            f"- **Memory**: {wp.get('memory_limit')}\n\n"
+            f"## Database\n"
+            f"- **Tables**: {db.get('tables_count')}\n"
+            f"- **Size**: {db.get('database_size')}\n\n"
+            f"## Filesystem\n"
+            f"- **Uploads writable**: {'✅' if fs.get('uploads_writable') else '❌'}\n"
+            f"- **Content writable**: {'✅' if fs.get('content_writable') else '❌'}\n"
+        )
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpUserCountInput(BaseModel):
-    """Input for user count retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-
-@mcp.tool(
-    name="wp_get_user_count",
-    annotations={
-        "title": "Get WordPress User Statistics",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_get_user_count(params: WpUserCountInput) -> str:
-    """Get user statistics for the WordPress site.
-
-    Returns total user count and breakdown by role.
-
-    Returns:
-        str: JSON with user count data.
-    """
+@mcp.tool()
+async def wp_get_user_count() -> str:
+    """Get WordPress user statistics broken down by role."""
     try:
-        data = await wp_api_request("/user-count")
-        return format_json(data)
+        return _json(await _get("/user-count"))
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpPostStatsInput(BaseModel):
-    """Input for post statistics retrieval."""
-    model_config = ConfigDict(extra="forbid")
-
-
-@mcp.tool(
-    name="wp_get_post_stats",
-    annotations={
-        "title": "Get WordPress Post Statistics",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_get_post_stats(params: WpPostStatsInput) -> str:
-    """Get content statistics for the WordPress site.
-
-    Returns counts of posts, pages, and other content types,
-    broken down by status (published, draft, etc.).
-
-    Returns:
-        str: JSON with post statistics data.
-    """
+@mcp.tool()
+async def wp_get_post_stats() -> str:
+    """Get WordPress content statistics: post counts by type and status (published, draft, etc)."""
     try:
-        data = await wp_api_request("/post-stats")
-        return format_json(data)
+        return _json(await _get("/post-stats"))
     except Exception as e:
-        return handle_api_error(e)
+        return _err(e)
 
 
-class WpFullDiagnosticsInput(BaseModel):
-    """Input for full site diagnostics."""
-    model_config = ConfigDict(extra="forbid")
-
-
-@mcp.tool(
-    name="wp_full_diagnostics",
-    annotations={
-        "title": "Run Full WordPress Diagnostics",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": True,
-    },
-)
-async def wp_full_diagnostics(params: WpFullDiagnosticsInput) -> str:
-    """Run a comprehensive diagnostic check on the WordPress site.
-
-    Calls all available endpoints and compiles a full report including
-    site info, system status, plugin list, themes, user count, and post stats.
-    Use this for a complete overview of the site's health and configuration.
-
-    Returns:
-        str: Comprehensive Markdown report of the entire WordPress site.
-    """
+@mcp.tool()
+async def wp_full_diagnostics() -> str:
+    """Run a full diagnostic report on the WordPress site covering all available data."""
     sections = []
-
-    endpoints = [
-        ("/site-info", "Site Information", format_site_info_markdown),
-        ("/system-status", "System Status", format_system_status_markdown),
-        ("/plugins", "Plugins", format_plugins_markdown),
+    calls = [
+        ("/site-info",     "Site Information"),
+        ("/system-status", "System Status"),
+        ("/plugins",       "Plugins"),
+        ("/themes",        "Themes"),
+        ("/user-count",    "Users"),
+        ("/post-stats",    "Content"),
     ]
-
-    for endpoint, name, formatter in endpoints:
+    for endpoint, label in calls:
         try:
-            data = await wp_api_request(endpoint)
-            sections.append(formatter(data))
+            data = await _get(endpoint)
+            sections.append(f"# {label}\n\n```json\n{_json(data)}\n```")
         except Exception as e:
-            sections.append(f"# {name}\n\n⚠️ Error: {handle_api_error(e)}")
-
-    # Themes, users, posts — simpler formatting.
-    simple_endpoints = [
-        ("/themes", "Themes"),
-        ("/user-count", "User Statistics"),
-        ("/post-stats", "Post Statistics"),
-    ]
-
-    for endpoint, name in simple_endpoints:
-        try:
-            data = await wp_api_request(endpoint)
-            sections.append(f"# {name}\n\n```json\n{format_json(data)}\n```")
-        except Exception as e:
-            sections.append(f"# {name}\n\n⚠️ Error: {handle_api_error(e)}")
-
+            sections.append(f"# {label}\n\n⚠️ {_err(e)}")
     return "\n\n---\n\n".join(sections)
 
 
-# ========================================
-# Entry point
-# ========================================
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     mcp.run()
