@@ -12,6 +12,7 @@ class Admin_Interface {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'handle_api_key_actions' ) );
 		add_action( 'admin_init', array( $this, 'handle_log_actions' ) );
+		add_action( 'admin_init', array( $this, 'handle_provider_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WP_LLM_CONNECTOR_PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
 	}
@@ -61,6 +62,10 @@ class Admin_Interface {
 			? array_map( 'sanitize_text_field', $input['allowed_endpoints'] )
 			: array();
 
+		// Preserve existing providers config (managed by its own form).
+		$current_settings          = get_option( 'wp_llm_connector_settings', array() );
+		$sanitized['providers']    = $current_settings['providers'] ?? array();
+
 		// Preserve existing API keys if not provided in input (form submissions don't include them).
 		// If api_keys are in the input, use them (programmatic updates via handle_api_key_actions).
 		if ( isset( $input['api_keys'] ) && is_array( $input['api_keys'] ) ) {
@@ -79,7 +84,6 @@ class Admin_Interface {
 			}
 			$sanitized['api_keys'] = $api_keys;
 		} else {
-			$current_settings      = get_option( 'wp_llm_connector_settings', array() );
 			$sanitized['api_keys'] = $current_settings['api_keys'] ?? array();
 		}
 
@@ -137,7 +141,11 @@ class Admin_Interface {
 			return;
 		}
 
-		$settings            = get_option( 'wp_llm_connector_settings', array() );
+		$settings = get_option( 'wp_llm_connector_settings', array() );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Tab selection, no data mutation.
+		$active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
+
 		$available_endpoints = array(
 			'site_info'     => __( 'Site Information', 'wp-llm-connector' ),
 			'plugin_list'   => __( 'Plugin List', 'wp-llm-connector' ),
@@ -230,6 +238,23 @@ class Admin_Interface {
 			?>
 
 			<?php settings_errors( 'wp_llm_connector_messages' ); ?>
+
+			<nav class="nav-tab-wrapper">
+				<a href="<?php echo esc_url( add_query_arg( 'tab', 'general', admin_url( 'options-general.php?page=wp-llm-connector' ) ) ); ?>"
+					class="nav-tab <?php echo 'general' === $active_tab ? 'nav-tab-active' : ''; ?>">
+					<?php esc_html_e( 'General', 'wp-llm-connector' ); ?>
+				</a>
+				<a href="<?php echo esc_url( add_query_arg( 'tab', 'providers', admin_url( 'options-general.php?page=wp-llm-connector' ) ) ); ?>"
+					class="nav-tab <?php echo 'providers' === $active_tab ? 'nav-tab-active' : ''; ?>">
+					<?php esc_html_e( 'AI Providers', 'wp-llm-connector' ); ?>
+				</a>
+				<a href="<?php echo esc_url( add_query_arg( 'tab', 'api-keys', admin_url( 'options-general.php?page=wp-llm-connector' ) ) ); ?>"
+					class="nav-tab <?php echo 'api-keys' === $active_tab ? 'nav-tab-active' : ''; ?>">
+					<?php esc_html_e( 'API Keys', 'wp-llm-connector' ); ?>
+				</a>
+			</nav>
+
+			<?php if ( 'general' === $active_tab ) : ?>
 
 			<div class="wp-llm-connector-admin-container">
 				<div class="wp-llm-connector-main-settings">
@@ -359,10 +384,6 @@ class Admin_Interface {
 				</div>
 
 				<div class="wp-llm-connector-api-keys">
-					<h2><?php esc_html_e( 'API Keys', 'wp-llm-connector' ); ?></h2>
-
-					<?php $this->render_api_keys_section( $settings ); ?>
-
 					<div class="wp-llm-connector-info">
 						<h2><?php esc_html_e( 'Connection Information', 'wp-llm-connector' ); ?></h2>
 						<div class="info-box">
@@ -395,8 +416,159 @@ class Admin_Interface {
 					</div>
 				</div>
 			</div>
+
+			<?php elseif ( 'providers' === $active_tab ) : ?>
+
+			<div class="wp-llm-connector-admin-container">
+				<div class="wp-llm-connector-main-settings">
+					<?php $this->render_providers_tab( $settings ); ?>
+				</div>
+			</div>
+
+			<?php elseif ( 'api-keys' === $active_tab ) : ?>
+
+			<div class="wp-llm-connector-admin-container">
+				<div class="wp-llm-connector-main-settings">
+					<h2><?php esc_html_e( 'API Keys', 'wp-llm-connector' ); ?></h2>
+					<?php $this->render_api_keys_section( $settings ); ?>
+				</div>
+			</div>
+
+			<?php endif; ?>
+
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the AI Providers settings tab.
+	 *
+	 * @param array $settings Current plugin settings.
+	 */
+	private function render_providers_tab( $settings ) {
+		$providers_config = $settings['providers'] ?? array();
+
+		$providers = array(
+			'anthropic' => array(
+				'label'  => 'Anthropic (Claude)',
+				'models' => array( 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001' ),
+			),
+			'openai'    => array(
+				'label'  => 'OpenAI',
+				'models' => array( 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo' ),
+			),
+			'gemini'    => array(
+				'label'  => 'Google Gemini',
+				'models' => array( 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash' ),
+			),
+		);
+
+		?>
+		<form method="post" action="">
+			<?php wp_nonce_field( 'wp_llm_connector_provider_settings', 'wp_llm_connector_provider_nonce' ); ?>
+
+			<?php foreach ( $providers as $slug => $info ) :
+				$config = $providers_config[ $slug ] ?? array();
+				?>
+				<h2><?php echo esc_html( $info['label'] ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Enable', 'wp-llm-connector' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox"
+									name="providers[<?php echo esc_attr( $slug ); ?>][enabled]"
+									value="1"
+									<?php checked( ! empty( $config['enabled'] ) ); ?>>
+								<?php
+								/* translators: %s: provider display name */
+								printf( esc_html__( 'Enable %s provider', 'wp-llm-connector' ), esc_html( $info['label'] ) );
+								?>
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'API Key', 'wp-llm-connector' ); ?></th>
+						<td>
+							<input type="password"
+								name="providers[<?php echo esc_attr( $slug ); ?>][api_key]"
+								value="<?php echo esc_attr( $config['api_key'] ?? '' ); ?>"
+								class="regular-text"
+								autocomplete="off">
+							<p class="description">
+								<?php
+								/* translators: %s: provider display name */
+								printf( esc_html__( 'Enter your %s API key.', 'wp-llm-connector' ), esc_html( $info['label'] ) );
+								?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Default Model', 'wp-llm-connector' ); ?></th>
+						<td>
+							<select name="providers[<?php echo esc_attr( $slug ); ?>][default_model]">
+								<?php foreach ( $info['models'] as $model ) : ?>
+									<option value="<?php echo esc_attr( $model ); ?>"
+										<?php selected( $config['default_model'] ?? $info['models'][0], $model ); ?>>
+										<?php echo esc_html( $model ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+				</table>
+			<?php endforeach; ?>
+
+			<?php submit_button( __( 'Save Provider Settings', 'wp-llm-connector' ) ); ?>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Handle provider settings form submission.
+	 */
+	public function handle_provider_settings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below when processing POST.
+		if ( ! isset( $_GET['page'] ) || 'wp-llm-connector' !== $_GET['page'] ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['providers'] ) || ! check_admin_referer( 'wp_llm_connector_provider_settings', 'wp_llm_connector_provider_nonce' ) ) {
+			return;
+		}
+
+		$settings  = get_option( 'wp_llm_connector_settings', array() );
+		$providers = array();
+
+		$allowed_slugs = array( 'anthropic', 'openai', 'gemini' );
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized per-field below.
+		$input = wp_unslash( $_POST['providers'] );
+
+		if ( is_array( $input ) ) {
+			foreach ( $allowed_slugs as $slug ) {
+				$data = $input[ $slug ] ?? array();
+				$providers[ $slug ] = array(
+					'enabled'       => ! empty( $data['enabled'] ),
+					'api_key'       => isset( $data['api_key'] ) ? sanitize_text_field( $data['api_key'] ) : '',
+					'default_model' => isset( $data['default_model'] ) ? sanitize_text_field( $data['default_model'] ) : '',
+				);
+			}
+		}
+
+		$settings['providers'] = $providers;
+		update_option( 'wp_llm_connector_settings', $settings );
+
+		add_settings_error(
+			'wp_llm_connector_messages',
+			'providers_saved',
+			__( 'Provider settings saved.', 'wp-llm-connector' ),
+			'success'
+		);
 	}
 
 	private function render_api_keys_section( $settings ) {

@@ -4,11 +4,11 @@ Tags: llm, ai, api, rest-api, diagnostics, mcp, claude, gemini
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.3
+Stable tag: 2.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect your WordPress site to LLM agents for secure, read-only diagnostics and administration. Supports Claude Code and Gemini CLI via MCP, with more LLMs coming soon.
+Connect your WordPress site to LLM agents for secure diagnostics and AI-powered features. Supports WP 7.0 AI Client provider registration, Abilities API, and MCP for Claude Code, Gemini CLI, and more.
 
 == Description ==
 
@@ -90,6 +90,19 @@ All plugin settings, API keys, and audit logs are permanently deleted when the p
 
 == Changelog ==
 
+= 2.0.0 =
+* Added: Provider system with Anthropic (Claude), OpenAI, and Google Gemini support
+* Added: AI Providers admin tab for managing provider API keys and models
+* Added: WP 7.0 AI Client API integration — providers auto-register when available
+* Added: WP 6.9+ Abilities API integration with 8 abilities (site-info, list-plugins, system-status, user-count, post-stats, list-providers, generate-text, provider-status)
+* Added: Provider Registry with capability-based provider selection
+* Added: generate_text() method on all providers via wp_remote_post()
+* Added: Optional Composer autoloader support
+* Added: provider column and index to audit log table (dbDelta upgrade-safe)
+* Changed: Admin settings page now uses tabbed navigation (General | AI Providers | API Keys)
+* Changed: Database schema version bumped to 2.0
+* Compatibility: All new WP 7.0/6.9 hooks are guarded — plugin still works on WP 5.8+
+
 = 0.1.3 =
 * Security: Added table name validation on all database queries to prevent SQL injection.
 * Hardening: Added ABSPATH guards on 6 include files to prevent direct access.
@@ -126,6 +139,9 @@ All plugin settings, API keys, and audit logs are permanently deleted when the p
 * Admin settings page under Settings > LLM Connector.
 
 == Upgrade Notice ==
+
+= 2.0.0 =
+Major update: adds Anthropic, OpenAI, and Gemini provider support with AI text generation. Integrates with WP 7.0 AI Client and WP 6.9 Abilities API. No breaking changes to existing REST endpoints.
 
 = 0.1.2 =
 Added Gemini CLI support. No breaking changes — the same MCP server file now works with both Claude Code and Gemini CLI.

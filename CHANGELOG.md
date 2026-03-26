@@ -5,6 +5,35 @@ All notable changes to the WP LLM Connector plugin will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-26
+
+### Added
+- Provider system with `LLM_Provider_Interface` and implementations for Anthropic (Claude), OpenAI, and Google Gemini
+- `Provider_Registry` for managing provider lifecycle, capability-based lookup, and extensibility via `wp_llm_connector_register_providers` action
+- `generate_text()` method on all providers, calling vendor APIs via `wp_remote_post()`
+- WP 7.0 AI Client API integration: providers auto-register via `register_with_wp_ai_client()` when available
+- WP 6.9+ Abilities API integration via `Abilities_Manager` with 8 registered abilities:
+  - `llm-connector/site-info`, `llm-connector/list-plugins`, `llm-connector/system-status`
+  - `llm-connector/user-count`, `llm-connector/post-stats`, `llm-connector/list-providers`
+  - `llm-connector/generate-text` (MCP private — requires auth), `llm-connector/provider-status`
+- AI Providers admin tab for configuring enable toggle, API key, and default model per provider
+- `provider` column and index in audit log table (dbDelta upgrade-safe)
+- Optional Composer autoloader support (`vendor/autoload.php`)
+
+### Changed
+- Admin settings page uses tabbed navigation: General | AI Providers | API Keys
+- Database schema version bumped from `1.0` to `2.0`
+- `Activator::create_table()` renamed to `create_or_upgrade_table()` and made public static
+- Default options now include `providers` key with empty configs for anthropic, openai, gemini
+- `sanitize_settings()` preserves provider config during main form saves
+- Plugin description updated to reflect WP 7.0 AI Client and Abilities API support
+- Version bumped to 2.0.0
+
+### Compatibility
+- All WP 7.0 / WP 6.9 hooks are guarded with `function_exists()` — plugin works on WP 5.8+
+- All v1 REST endpoints remain unchanged (`API_Handler.php` not modified)
+- `Security_Manager.php` not modified
+
 ## [0.1.2] - 2026-02-09
 
 ### Added

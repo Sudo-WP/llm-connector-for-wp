@@ -12,7 +12,7 @@ class Activator {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.0';
+	const DB_VERSION = '2.0';
 
 	public static function activate() {
 		// Create default options (only if they don't exist).
@@ -30,12 +30,29 @@ class Activator {
 			'api_keys'          => array(),
 			'rate_limit'        => 60,
 			'log_requests'      => true,
+			'providers'         => array(
+				'anthropic' => array(
+					'enabled'       => false,
+					'api_key'       => '',
+					'default_model' => 'claude-sonnet-4-6',
+				),
+				'openai'    => array(
+					'enabled'       => false,
+					'api_key'       => '',
+					'default_model' => 'gpt-4o',
+				),
+				'gemini'    => array(
+					'enabled'       => false,
+					'api_key'       => '',
+					'default_model' => 'gemini-2.0-flash',
+				),
+			),
 		);
 
 		add_option( 'wp_llm_connector_settings', $default_options );
 
 		// Create or upgrade the audit log table.
-		self::create_table();
+		self::create_or_upgrade_table();
 
 		// Set activation timestamp.
 		update_option( 'wp_llm_connector_activated', current_time( 'mysql' ) );
@@ -49,7 +66,7 @@ class Activator {
 	/**
 	 * Create or upgrade the audit log table with version tracking.
 	 */
-	private static function create_table() {
+	public static function create_or_upgrade_table() {
 		$installed_version = get_option( 'wp_llm_connector_db_version', '0' );
 
 		if ( version_compare( $installed_version, self::DB_VERSION, '>=' ) ) {
@@ -69,9 +86,11 @@ class Activator {
 			response_code int(3),
 			ip_address varchar(45),
 			user_agent varchar(500),
+			provider varchar(64) DEFAULT NULL,
 			PRIMARY KEY  (id),
 			KEY timestamp (timestamp),
-			KEY api_key_hash (api_key_hash)
+			KEY api_key_hash (api_key_hash),
+			KEY provider (provider)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
