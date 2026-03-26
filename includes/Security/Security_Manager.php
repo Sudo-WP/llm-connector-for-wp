@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Security;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Security;
 
 class Security_Manager {
 	private $settings;

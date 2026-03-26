@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Admin;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Admin;
 
 class Admin_Interface {
 

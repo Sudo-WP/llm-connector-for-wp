@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Providers;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Providers;
 
 /**
  * Google Gemini provider implementation.

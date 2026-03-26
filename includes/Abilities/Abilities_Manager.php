@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Abilities;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Abilities;
 
 use WP_LLM_Connector\Security\Security_Manager;
 use WP_LLM_Connector\Providers\Provider_Registry;

@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Core;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Core;
 
 class Deactivator {
 

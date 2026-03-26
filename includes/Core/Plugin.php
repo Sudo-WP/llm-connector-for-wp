@@ -1,9 +1,9 @@
 <?php
+namespace WP_LLM_Connector\Core;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-namespace WP_LLM_Connector\Core;
 
 use WP_LLM_Connector\Security\Security_Manager;
 use WP_LLM_Connector\API\API_Handler;
