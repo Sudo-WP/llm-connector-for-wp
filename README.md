@@ -10,7 +10,7 @@ A secure WordPress plugin that connects your site to LLM agents and the WordPres
 
 Watch the LLM Connector in action with Claude Code:
 
-[![LLM Connector Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=RTll7S1rGFE)
+[![LLM Connector Demo](https://img.youtube.com/vi/RTll7S1rGFE/maxresdefault.jpg)](https://www.youtube.com/watch?v=RTll7S1rGFE)
 
 *Click to watch on YouTube*
 
