@@ -6,6 +6,14 @@
 
 A secure WordPress plugin that connects your site to LLM agents and the WordPress AI ecosystem. Provides read-only site diagnostics via REST API and MCP, multi-provider AI text generation (Anthropic, OpenAI, Gemini), and forward-compatible integration with the WP 7.0 AI Client API and WP 6.9+ Abilities API.
 
+## 📹 Demo Video
+
+Watch the LLM Connector in action with Claude Code:
+
+[![LLM Connector Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=RTll7S1rGFE)
+
+*Click to watch on YouTube*
+
 ## Purpose
 
 This plugin creates a bridge between your WordPress site and AI tools, allowing them to:
