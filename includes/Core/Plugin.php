@@ -23,6 +23,9 @@ class Plugin {
 	}
 
 	public function init() {
+		// Run any pending schema upgrades (non-activation updates).
+		Activator::maybe_upgrade();
+
 		// Initialize security first — single instance shared across components.
 		$this->security = new Security_Manager();
 

@@ -103,4 +103,163 @@ jQuery(document).ready(function($) {
 			$newKeyRow[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}, 300);
 	}
+
+	// ========================================
+	// Access Log — toggle custom date inputs
+	// ========================================
+	var $rangeSelect = $('.wp-llm-log-range');
+	if ($rangeSelect.length) {
+		$rangeSelect.on('change', function() {
+			var show = $(this).val() === 'custom';
+			$('.wp-llm-log-custom-range').toggle(show);
+		});
+	}
+
+	// ========================================
+	// Connect Your AI Client — snippet renderer
+	// ========================================
+	var mcp = (wpLlmConnector && wpLlmConnector.mcp) || null;
+	var $clientSelect = $('#wp-llm-client-select');
+	var $snippetBox = $('#wp-llm-mcp-snippet');
+	var $verifiedBadge = $('#wp-llm-client-verified');
+	var $copyConfigBtn = $('#wp-llm-copy-config');
+	var $testBtn = $('#wp-llm-test-connection');
+	var $testStatus = $('#wp-llm-test-status');
+
+	if (mcp && $clientSelect.length) {
+		var i18n = wpLlmConnector.i18n || {};
+
+		function maskKey() {
+			// Prefer the plaintext key if we have one (just-generated), so the
+			// preview reflects the real key's prefix. Fall back to the saved
+			// prefix of the first active key, else the placeholder.
+			var source = mcp.fullKey || mcp.maskedPrefix || i18n.placeholderKey || 'YOUR_API_KEY_HERE';
+			var first8 = source.substring(0, 8);
+			return first8 + '...';
+		}
+
+		function realKeyForCopy() {
+			return mcp.fullKey && mcp.fullKey.length
+				? mcp.fullKey
+				: (i18n.placeholderKey || 'YOUR_API_KEY_HERE');
+		}
+
+		function baseConfig(key) {
+			var serverId = 'wordpress-' + (mcp.siteSlug || 'site');
+			var mcpServers = {};
+			mcpServers[serverId] = {
+				url: mcp.restUrl,
+				headers: {}
+			};
+			mcpServers[serverId].headers[mcp.headerName] = key;
+			return { mcpServers: mcpServers };
+		}
+
+		function renderSnippet(client, key) {
+			var json = JSON.stringify(baseConfig(key), null, 2);
+			switch (client) {
+				case 'claude-code':
+					return '// File: ~/.claude/mcp.json\n' + json;
+				case 'gemini-cli':
+					return '// File: ~/.gemini/mcp.json\n' + json;
+				case 'cursor-windsurf-vscode':
+					return '// Cursor: .cursor/mcp.json\n'
+						+ '// Windsurf: .windsurf/mcp.json\n'
+						+ '// VS Code (Cline): .vscode/cline_mcp_settings.json\n'
+						+ json;
+				case 'claude-web':
+				default:
+					return json;
+			}
+		}
+
+		function updatePreview() {
+			var client = $clientSelect.val();
+			$snippetBox.text(renderSnippet(client, maskKey()));
+			$verifiedBadge.toggle(client === 'claude-web');
+		}
+
+		$clientSelect.on('change', updatePreview);
+		updatePreview();
+
+		// --- Copy full config ---
+		$copyConfigBtn.on('click', function() {
+			var $btn = $(this);
+			var $icon = $btn.find('.dashicons');
+			var $text = $btn.find('.wp-llm-btn-text');
+			var full = renderSnippet($clientSelect.val(), realKeyForCopy());
+
+			function onSuccess() {
+				$btn.addClass('copied');
+				$icon.removeClass('dashicons-clipboard').addClass('dashicons-yes');
+				$text.text(i18n.copyConfigDone || 'Copied!');
+				setTimeout(function() {
+					$btn.removeClass('copied');
+					$icon.removeClass('dashicons-yes').addClass('dashicons-clipboard');
+					$text.text(i18n.copyConfigText || 'Copy full config');
+				}, 2000);
+				if (!mcp.hasFullKey && i18n.noFullKeyNotice) {
+					// One-time informational notice when falling back to placeholder.
+					$btn.attr('title', i18n.noFullKeyNotice);
+				}
+			}
+
+			function onFailure() {
+				window.prompt(i18n.copyError || 'Copy this manually:', full);
+			}
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(full).then(onSuccess).catch(function() {
+					// execCommand fallback.
+					var $temp = $('<textarea>');
+					$('body').append($temp);
+					$temp.val(full).select();
+					var ok = false;
+					try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+					$temp.remove();
+					if (ok) { onSuccess(); } else { onFailure(); }
+				});
+			} else {
+				var $temp = $('<textarea>');
+				$('body').append($temp);
+				$temp.val(full).select();
+				var ok = false;
+				try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+				$temp.remove();
+				if (ok) { onSuccess(); } else { onFailure(); }
+			}
+		});
+
+		// --- Test connection ---
+		$testBtn.on('click', function() {
+			$testStatus
+				.removeClass('is-ok is-fail')
+				.addClass('is-testing')
+				.text(i18n.testTesting || 'Testing...');
+
+			$.post(wpLlmConnector.ajaxUrl, {
+				action: 'wp_llm_connector_test_connection',
+				nonce: wpLlmConnector.nonce
+			})
+				.done(function(res) {
+					if (res && res.success) {
+						$testStatus
+							.removeClass('is-testing is-fail')
+							.addClass('is-ok')
+							.text(i18n.testConnected || 'Connected');
+					} else {
+						$testStatus
+							.removeClass('is-testing is-ok')
+							.addClass('is-fail')
+							.text(i18n.testFailed || 'Failed');
+					}
+				})
+				.fail(function() {
+					$testStatus
+						.removeClass('is-testing is-ok')
+						.addClass('is-fail')
+						.text(i18n.testFailed || 'Failed');
+				});
+		});
+	}
 });

@@ -6,9 +6,12 @@ class Activator {
 	/**
 	 * Current database schema version.
 	 *
+	 * 1.0 — initial audit log
+	 * 1.1 — added http_method and execution_time_ms columns for the Access Log panel
+	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.0';
+	const DB_VERSION = '1.1';
 
 	public static function activate() {
 		// Create default options (only if they don't exist).
@@ -43,6 +46,14 @@ class Activator {
 	}
 
 	/**
+	 * Run any pending schema upgrades on plugin load. Safe to call on every
+	 * request; returns quickly when the stored db version matches the code.
+	 */
+	public static function maybe_upgrade() {
+		self::create_table();
+	}
+
+	/**
 	 * Create or upgrade the audit log table with version tracking.
 	 */
 	private static function create_table() {
@@ -61,13 +72,17 @@ class Activator {
 			timestamp datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 			api_key_hash varchar(64) NOT NULL,
 			endpoint varchar(255) NOT NULL,
+			http_method varchar(10) DEFAULT NULL,
+			execution_time_ms float DEFAULT NULL,
 			request_data text,
 			response_code int(3),
 			ip_address varchar(45),
 			user_agent varchar(500),
 			PRIMARY KEY  (id),
 			KEY timestamp (timestamp),
-			KEY api_key_hash (api_key_hash)
+			KEY api_key_hash (api_key_hash),
+			KEY response_code (response_code),
+			KEY ip_address (ip_address)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

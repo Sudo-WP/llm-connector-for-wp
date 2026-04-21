@@ -98,6 +98,45 @@ class API_Handler {
 				'permission_callback' => '__return_true',
 			)
 		);
+
+		// MCP discovery / server-info endpoint. Authenticated via the standard
+		// X-WP-LLM-API-Key flow, but intentionally NOT listed in $endpoint_map
+		// so it is not subject to the per-endpoint allowlist — an auth'd MCP
+		// client must always be able to retrieve the manifest to learn which
+		// tools the site has enabled.
+		register_rest_route(
+			$this->namespace,
+			'/mcp',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_mcp_manifest' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+			)
+		);
+
+		// Start the request timer as soon as dispatch begins for our namespace,
+		// so log_request() can attach an accurate execution_time_ms.
+		add_filter( 'rest_pre_dispatch', array( $this, 'mark_request_start' ), 10, 3 );
+	}
+
+	/**
+	 * rest_pre_dispatch filter: record a start time whenever the incoming
+	 * request targets this plugin's namespace. Returns the original $result
+	 * untouched.
+	 *
+	 * @param mixed            $result  Response to replace the requested version with.
+	 * @param \WP_REST_Server  $server  REST server instance.
+	 * @param \WP_REST_Request $request The request being dispatched.
+	 * @return mixed
+	 */
+	public function mark_request_start( $result, $server, $request ) {
+		if ( $request instanceof \WP_REST_Request ) {
+			$route = $request->get_route();
+			if ( is_string( $route ) && 0 === strpos( $route, '/' . $this->namespace ) ) {
+				Security_Manager::mark_request_start();
+			}
+		}
+		return $result;
 	}
 
 	/**
@@ -351,6 +390,111 @@ class API_Handler {
 				'status'    => 'ok',
 				'timestamp' => current_time( 'mysql' ),
 			)
+		);
+	}
+
+	/**
+	 * GET /mcp — MCP server manifest.
+	 *
+	 * Returns the set of tools this installation currently exposes, filtered
+	 * to the endpoints enabled in settings so an MCP client does not try to
+	 * call something that will 403.
+	 */
+	public function get_mcp_manifest( \WP_REST_Request $request ) {
+		$settings = get_option( 'wp_llm_connector_settings', array() );
+		$manifest = self::build_mcp_manifest( $settings );
+
+		$this->log_success( $request, 'mcp' );
+		return rest_ensure_response( $manifest );
+	}
+
+	/**
+	 * Canonical tool catalog, keyed by the endpoint permission slug used in
+	 * the settings allowlist. Kept as a single source of truth so the manifest
+	 * builder, permission checks, and future validation stay in sync.
+	 *
+	 * @return array<string, array{name:string,endpoint:string,method:string}>
+	 */
+	private static function get_tool_catalog() {
+		return array(
+			'site_info'     => array( 'name' => 'wp_site_info',     'endpoint' => '/site-info',    'method' => 'GET' ),
+			'plugin_list'   => array( 'name' => 'wp_plugins',       'endpoint' => '/plugins',      'method' => 'GET' ),
+			'theme_list'    => array( 'name' => 'wp_themes',        'endpoint' => '/themes',       'method' => 'GET' ),
+			'system_status' => array( 'name' => 'wp_system_status', 'endpoint' => '/system-status','method' => 'GET' ),
+			'user_count'    => array( 'name' => 'wp_user_count',    'endpoint' => '/user-count',   'method' => 'GET' ),
+			'post_stats'    => array( 'name' => 'wp_post_stats',    'endpoint' => '/post-stats',   'method' => 'GET' ),
+		);
+	}
+
+	/**
+	 * Build the MCP manifest from a settings array.
+	 *
+	 * Pure-ish: takes the settings blob, reads site-level info from WordPress
+	 * globals (get_bloginfo, rest_url, sanitize_title). Kept static so unit
+	 * tests can exercise tool-filtering logic independently of the REST layer.
+	 *
+	 * The tools array only includes entries whose permission slugs appear in
+	 * $settings['allowed_endpoints']. The composite wp_full_diagnostics tool
+	 * is only advertised when ALL of its component steps (site_info,
+	 * plugin_list, theme_list, system_status) are enabled — otherwise the
+	 * composite would fail mid-sequence, which is worse than not advertising.
+	 *
+	 * @param array $settings Plugin settings (expects 'allowed_endpoints' key).
+	 * @return array MCP server manifest.
+	 */
+	public static function build_mcp_manifest( array $settings ) {
+		$allowed = isset( $settings['allowed_endpoints'] ) && is_array( $settings['allowed_endpoints'] )
+			? $settings['allowed_endpoints']
+			: array();
+
+		$tools = array();
+		foreach ( self::get_tool_catalog() as $perm_slug => $tool ) {
+			if ( in_array( $perm_slug, $allowed, true ) ) {
+				$tools[] = $tool;
+			}
+		}
+
+		// Composite diagnostics tool — four-step sequence. Requires all four
+		// underlying endpoints to be enabled; otherwise omitted entirely.
+		$composite_prereqs = array( 'site_info', 'plugin_list', 'theme_list', 'system_status' );
+		$composite_ready   = true;
+		foreach ( $composite_prereqs as $prereq ) {
+			if ( ! in_array( $prereq, $allowed, true ) ) {
+				$composite_ready = false;
+				break;
+			}
+		}
+		if ( $composite_ready ) {
+			$tools[] = array(
+				'name'        => 'wp_full_diagnostics',
+				'composite'   => true,
+				'description' => 'Runs site-info, plugins, themes, and system-status in sequence and aggregates the responses.',
+				'steps'       => array(
+					array( 'endpoint' => '/site-info',     'method' => 'GET' ),
+					array( 'endpoint' => '/plugins',       'method' => 'GET' ),
+					array( 'endpoint' => '/themes',        'method' => 'GET' ),
+					array( 'endpoint' => '/system-status', 'method' => 'GET' ),
+				),
+			);
+		}
+
+		$site_name = (string) get_bloginfo( 'name' );
+		$slug      = sanitize_title( $site_name );
+		if ( '' === $slug ) {
+			$slug = 'site';
+		}
+
+		return array(
+			'name'        => 'wordpress-' . $slug,
+			'version'     => '1.0',
+			'description' => sprintf( 'Read-only WordPress MCP bridge — %s', $site_name ),
+			'transport'   => 'http',
+			'auth'        => array(
+				'type'   => 'header',
+				'header' => 'X-WP-LLM-API-Key',
+			),
+			'tools'       => $tools,
+			'base_url'    => esc_url_raw( rest_url( 'wp-llm-connector/v1' ) ),
 		);
 	}
 

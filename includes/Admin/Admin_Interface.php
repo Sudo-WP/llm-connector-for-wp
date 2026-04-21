@@ -8,7 +8,9 @@ class Admin_Interface {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'handle_api_key_actions' ) );
 		add_action( 'admin_init', array( $this, 'handle_log_actions' ) );
+		add_action( 'admin_init', array( $this, 'handle_access_log_actions' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_action( 'wp_ajax_wp_llm_connector_test_connection', array( $this, 'ajax_test_connection' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WP_LLM_CONNECTOR_PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
 	}
 
@@ -19,6 +21,18 @@ class Admin_Interface {
 			'manage_options',
 			'wp-llm-connector',
 			array( $this, 'render_settings_page' )
+		);
+
+		// Access Log appears as its own item under Settings, sibling to the
+		// main page. Keeping it distinct from the settings page avoids the
+		// awkwardness of tabbing a WP_List_Table inside an options form.
+		add_submenu_page(
+			'options-general.php',
+			__( 'LLM Connector — Access Log', 'wp-llm-connector' ),
+			__( 'LLM Connector Log', 'wp-llm-connector' ),
+			'manage_options',
+			'wp-llm-connector-access-log',
+			array( $this, 'render_access_log_page' )
 		);
 	}
 
@@ -59,16 +73,33 @@ class Admin_Interface {
 		// Preserve existing API keys if not provided in input (form submissions don't include them).
 		// If api_keys are in the input, use them (programmatic updates via handle_api_key_actions).
 		if ( isset( $input['api_keys'] ) && is_array( $input['api_keys'] ) ) {
+			// Whitelist of permitted write scopes — enforced here so a
+			// malformed submission can't smuggle an unknown scope into the
+			// key record and have it be honored by a future write endpoint.
+			$allowed_scopes = array( 'posts', 'plugins', 'options', 'users', 'cache' );
+
 			// Sanitize each API key entry for security.
 			$api_keys = array();
 			foreach ( $input['api_keys'] as $key_id => $key_data ) {
 				if ( is_array( $key_data ) ) {
+					$raw_scopes = isset( $key_data['write_scopes'] ) && is_array( $key_data['write_scopes'] )
+						? $key_data['write_scopes']
+						: array();
+					$scopes     = array_values( array_intersect(
+						array_map( 'sanitize_text_field', $raw_scopes ),
+						$allowed_scopes
+					) );
+
 					$api_keys[ sanitize_text_field( $key_id ) ] = array(
-						'name'       => isset( $key_data['name'] ) ? sanitize_text_field( $key_data['name'] ) : '',
-						'key_hash'   => isset( $key_data['key_hash'] ) ? sanitize_text_field( $key_data['key_hash'] ) : '',
-						'key_prefix' => isset( $key_data['key_prefix'] ) ? sanitize_text_field( $key_data['key_prefix'] ) : '',
-						'created'    => isset( $key_data['created'] ) ? absint( $key_data['created'] ) : 0,
-						'active'     => isset( $key_data['active'] ) ? (bool) $key_data['active'] : true,
+						'name'          => isset( $key_data['name'] ) ? sanitize_text_field( $key_data['name'] ) : '',
+						'key_hash'      => isset( $key_data['key_hash'] ) ? sanitize_text_field( $key_data['key_hash'] ) : '',
+						'key_prefix'    => isset( $key_data['key_prefix'] ) ? sanitize_text_field( $key_data['key_prefix'] ) : '',
+						'created'       => isset( $key_data['created'] ) ? absint( $key_data['created'] ) : 0,
+						'active'        => isset( $key_data['active'] ) ? (bool) $key_data['active'] : true,
+						// Write-tier fields (0.4.0-dev). Preserve through
+						// settings round-trips; default to closed.
+						'write_enabled' => isset( $key_data['write_enabled'] ) ? (bool) $key_data['write_enabled'] : false,
+						'write_scopes'  => $scopes,
 					);
 				}
 			}
@@ -82,7 +113,8 @@ class Admin_Interface {
 	}
 
 	public function enqueue_admin_assets( $hook ) {
-		if ( 'settings_page_wp-llm-connector' !== $hook ) {
+		$allowed = array( 'settings_page_wp-llm-connector', 'settings_page_wp-llm-connector-access-log' );
+		if ( ! in_array( $hook, $allowed, true ) ) {
 			return;
 		}
 
@@ -111,14 +143,65 @@ class Admin_Interface {
 				'ajaxUrl'            => admin_url( 'admin-ajax.php' ),
 				'nonce'              => wp_create_nonce( 'wp_llm_connector_ajax' ),
 				'newKey'             => $this->get_new_key_for_js(),
+				'mcp'                => $this->get_mcp_snippet_context(),
 				'i18n'               => array(
-					'copyLabel'      => __( 'Copy to clipboard', 'wp-llm-connector' ),
-					'copiedLabel'    => __( 'Copied to clipboard', 'wp-llm-connector' ),
-					'copyText'       => __( 'Copy Full Key', 'wp-llm-connector' ),
-					'copiedText'     => __( 'Copied!', 'wp-llm-connector' ),
-					'copyError'      => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
+					'copyLabel'        => __( 'Copy to clipboard', 'wp-llm-connector' ),
+					'copiedLabel'      => __( 'Copied to clipboard', 'wp-llm-connector' ),
+					'copyText'         => __( 'Copy Full Key', 'wp-llm-connector' ),
+					'copiedText'       => __( 'Copied!', 'wp-llm-connector' ),
+					'copyError'        => __( 'Failed to copy to clipboard. Please select and copy the key manually.', 'wp-llm-connector' ),
+					'copyConfigText'   => __( 'Copy full config', 'wp-llm-connector' ),
+					'copyConfigDone'   => __( 'Copied!', 'wp-llm-connector' ),
+					'testConnected'    => __( 'Connected', 'wp-llm-connector' ),
+					'testFailed'       => __( 'Failed', 'wp-llm-connector' ),
+					'testTesting'      => __( 'Testing...', 'wp-llm-connector' ),
+					'placeholderKey'   => __( 'YOUR_API_KEY_HERE', 'wp-llm-connector' ),
+					'noFullKeyNotice'  => __( 'Full API key is only available immediately after generation. Generate a new key above to get a pre-filled snippet; otherwise the placeholder will be copied and you can paste your key in manually.', 'wp-llm-connector' ),
 				),
 			)
+		);
+	}
+
+	/**
+	 * Build the context payload passed to admin.js for rendering MCP config
+	 * snippets. Only includes the real API key if one was just generated and
+	 * is still available via transient; older keys are stored hashed and cannot
+	 * be recovered, so the snippet falls back to a placeholder.
+	 *
+	 * @return array
+	 */
+	private function get_mcp_snippet_context() {
+		$settings   = get_option( 'wp_llm_connector_settings', array() );
+		$api_keys   = $settings['api_keys'] ?? array();
+		$new_key    = $this->get_new_key_for_js();
+
+		// Pick a key to represent in the masked snippet: prefer a freshly
+		// generated one, else the first active existing key, else empty.
+		$masked_prefix = '';
+		foreach ( $api_keys as $key_data ) {
+			if ( ! empty( $key_data['active'] ) ) {
+				$masked_prefix = substr( $key_data['key_prefix'] ?? '', 0, 8 );
+				break;
+			}
+		}
+		if ( $new_key ) {
+			$masked_prefix = substr( $new_key, 0, 8 );
+		}
+
+		// Slug for the MCP server identifier — stable across sessions.
+		$site_slug = sanitize_title( get_bloginfo( 'name' ) );
+		if ( '' === $site_slug ) {
+			$site_slug = 'site';
+		}
+
+		return array(
+			'restUrl'      => esc_url_raw( rest_url( 'wp-llm-connector/v1/mcp' ) ),
+			'healthUrl'    => esc_url_raw( rest_url( 'wp-llm-connector/v1/health' ) ),
+			'headerName'   => 'X-WP-LLM-API-Key',
+			'siteSlug'     => $site_slug,
+			'maskedPrefix' => $masked_prefix,
+			'hasFullKey'   => (bool) $new_key,
+			'fullKey'      => $new_key ? $new_key : '',
 		);
 	}
 
@@ -322,6 +405,8 @@ class Admin_Interface {
 
 					<?php $this->render_api_keys_section( $settings, $new_key_full, $new_key_id ); ?>
 
+					<?php $this->render_connect_client_section(); ?>
+
 					<div class="wp-llm-connector-info">
 						<h2><?php esc_html_e( 'Connection Information', 'wp-llm-connector' ); ?></h2>
 						<div class="info-box">
@@ -343,6 +428,8 @@ class Admin_Interface {
 								<li><code>/post-stats</code> - <?php esc_html_e( 'Content statistics', 'wp-llm-connector' ); ?></li>
 							</ul>
 						</div>
+
+						<?php $this->render_recent_activity_widget(); ?>
 					</div>
 				</div>
 			</div>
@@ -453,6 +540,98 @@ class Admin_Interface {
 	}
 
 	/**
+	 * Render the "Connect Your AI Client" section: client dropdown, masked
+	 * config snippet preview, copy-full-config button, and health-check
+	 * Test Connection badge. The snippet is rendered client-side by admin.js
+	 * using the context provided via wp_localize_script.
+	 */
+	private function render_connect_client_section() {
+		?>
+		<div class="wp-llm-connect-client">
+			<h2><?php esc_html_e( 'Connect Your AI Client', 'wp-llm-connector' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Pick an AI client to get a ready-to-use MCP config snippet. The preview masks your API key (first 8 characters). Use Copy full config to copy the complete config with the real key.', 'wp-llm-connector' ); ?>
+			</p>
+
+			<div class="wp-llm-connect-row">
+				<label for="wp-llm-client-select" class="wp-llm-connect-label">
+					<?php esc_html_e( 'AI Client', 'wp-llm-connector' ); ?>
+				</label>
+				<select id="wp-llm-client-select" class="wp-llm-client-select">
+					<option value="claude-web"><?php esc_html_e( 'Claude.ai (Web UI)', 'wp-llm-connector' ); ?> &mdash; <?php esc_html_e( 'Verified', 'wp-llm-connector' ); ?></option>
+					<option value="claude-code"><?php esc_html_e( 'Claude Code', 'wp-llm-connector' ); ?></option>
+					<option value="gemini-cli"><?php esc_html_e( 'Gemini CLI', 'wp-llm-connector' ); ?></option>
+					<option value="cursor-windsurf-vscode"><?php esc_html_e( 'Cursor / Windsurf / VS Code (Cline)', 'wp-llm-connector' ); ?></option>
+				</select>
+				<span id="wp-llm-client-verified" class="wp-llm-verified-badge" aria-live="polite">
+					<span class="dashicons dashicons-yes"></span>
+					<?php esc_html_e( 'Verified', 'wp-llm-connector' ); ?>
+				</span>
+			</div>
+
+			<pre id="wp-llm-mcp-snippet" class="wp-llm-code-block wp-llm-mcp-snippet" aria-label="<?php esc_attr_e( 'MCP configuration snippet preview', 'wp-llm-connector' ); ?>"></pre>
+
+			<div class="wp-llm-connect-actions">
+				<button type="button" id="wp-llm-copy-config" class="button button-primary">
+					<span class="dashicons dashicons-clipboard"></span>
+					<span class="wp-llm-btn-text"><?php esc_html_e( 'Copy full config', 'wp-llm-connector' ); ?></span>
+				</button>
+				<button type="button" id="wp-llm-test-connection" class="button">
+					<span class="dashicons dashicons-admin-plugins"></span>
+					<span class="wp-llm-btn-text"><?php esc_html_e( 'Test Connection', 'wp-llm-connector' ); ?></span>
+				</button>
+				<span id="wp-llm-test-status" class="wp-llm-test-status" role="status" aria-live="polite"></span>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * AJAX handler that pings the /health REST endpoint server-side.
+	 *
+	 * Running this through admin-ajax avoids surprises from browser CORS or
+	 * security plugins that might block a fetch to the REST route from the
+	 * admin origin, and keeps nonce + capability checks consistent.
+	 */
+	public function ajax_test_connection() {
+		check_ajax_referer( 'wp_llm_connector_ajax', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'wp-llm-connector' ) ), 403 );
+		}
+
+		$health_url = rest_url( 'wp-llm-connector/v1/health' );
+		$response   = wp_remote_get(
+			$health_url,
+			array(
+				'timeout'   => 10,
+				'sslverify' => apply_filters( 'wp_llm_connector_sslverify', true ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code >= 200 && $code < 300 ) {
+			wp_send_json_success(
+				array(
+					'status' => 'connected',
+					'code'   => $code,
+				)
+			);
+		}
+
+		wp_send_json_error(
+			array(
+				'status' => 'failed',
+				'code'   => $code,
+			)
+		);
+	}
+
+	/**
 	 * Get the newly generated API key for JavaScript (passed via wp_localize_script).
 	 * This avoids putting the full key in a data-attribute in the HTML.
 	 * The key is only available temporarily via a user-specific transient.
@@ -524,11 +703,17 @@ class Admin_Interface {
 
 			$key_id                          = wp_generate_uuid4();
 			$settings['api_keys'][ $key_id ] = array(
-				'name'       => $key_name,
-				'key_hash'   => hash( 'sha256', $api_key ),
-				'key_prefix' => substr( $api_key, 0, 12 ),
-				'created'    => time(),
-				'active'     => true,
+				'name'          => $key_name,
+				'key_hash'      => hash( 'sha256', $api_key ),
+				'key_prefix'    => substr( $api_key, 0, 12 ),
+				'created'       => time(),
+				'active'        => true,
+				// Write-tier fields (0.4.0-dev). New keys are always read-only
+				// by default; the per-key "Enable write access" toggle is the
+				// only code path that flips write_enabled to true. See
+				// docs/WRITE_TIER.md for the design.
+				'write_enabled' => false,
+				'write_scopes'  => array(),
 			);
 
 			// Update the option.
@@ -648,5 +833,402 @@ class Admin_Interface {
 			wp_safe_redirect( $redirect_url );
 			exit;
 		}
+	}
+
+	/**
+	 * Collect filters for the Access Log page from the current request.
+	 * Returns an associative array consumed by Access_Log_Table and the
+	 * shared WHERE-clause builder.
+	 *
+	 * @return array
+	 */
+	private function get_access_log_filters_from_request() {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$allowed_ranges  = array( 'all', '24h', '7d', '30d', 'custom' );
+		$allowed_status  = array( 'all', 'success', 'errors' );
+
+		$range  = isset( $_GET['range'] ) && in_array( $_GET['range'], $allowed_ranges, true ) ? sanitize_key( $_GET['range'] ) : '24h';
+		$status = isset( $_GET['status'] ) && in_array( $_GET['status'], $allowed_status, true ) ? sanitize_key( $_GET['status'] ) : 'all';
+		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$from   = isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '';
+		$to     = isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		return array(
+			'range'  => $range,
+			'status' => $status,
+			'search' => $search,
+			'from'   => $from,
+			'to'     => $to,
+		);
+	}
+
+	/**
+	 * Check if the audit log table actually exists. Returns false on fresh
+	 * installs that somehow skipped activation so the UI can render an
+	 * explicit empty state rather than a SQL error.
+	 */
+	private function audit_table_exists() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'llm_connector_audit_log';
+		$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		return $found === $table;
+	}
+
+	/**
+	 * Compute the top-of-page summary bar numbers (today, in site timezone).
+	 *
+	 * @return array{requests:int,unique_ips:int,error_rate:float}
+	 */
+	private function get_access_log_summary() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'llm_connector_audit_log';
+
+		// "Today" in the site's configured timezone, expressed as a UTC
+		// datetime for comparison against the UTC-stored timestamp column.
+		$start_local = new \DateTimeImmutable( 'now', wp_timezone() );
+		$start_local = $start_local->setTime( 0, 0, 0 );
+		$start_day   = $start_local->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
+
+		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE timestamp >= %s", $start_day ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$unique = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT ip_address) FROM {$table} WHERE timestamp >= %s", $start_day ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$errors = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE timestamp >= %s AND response_code >= 400", $start_day ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$rate = $total > 0 ? ( $errors / $total ) * 100 : 0.0;
+
+		return array(
+			'requests'   => $total,
+			'unique_ips' => $unique,
+			'error_rate' => round( $rate, 1 ),
+		);
+	}
+
+	/**
+	 * Render the "Recent Activity" widget used on the main settings page.
+	 * Shows the five most recent log entries and a link to the full log.
+	 */
+	private function render_recent_activity_widget() {
+		global $wpdb;
+		$log_url = admin_url( 'options-general.php?page=wp-llm-connector-access-log' );
+
+		if ( ! $this->audit_table_exists() ) {
+			?>
+			<div class="wp-llm-recent-activity">
+				<h2><?php esc_html_e( 'Recent Activity', 'wp-llm-connector' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'The audit log table has not been created yet. Deactivate and reactivate the plugin to initialize it.', 'wp-llm-connector' ); ?>
+				</p>
+			</div>
+			<?php
+			return;
+		}
+
+		$table = $wpdb->prefix . 'llm_connector_audit_log';
+		$rows  = $wpdb->get_results( "SELECT timestamp, endpoint, ip_address, response_code FROM {$table} ORDER BY timestamp DESC LIMIT 5", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		?>
+		<div class="wp-llm-recent-activity">
+			<h2><?php esc_html_e( 'Recent Activity', 'wp-llm-connector' ); ?></h2>
+			<?php if ( empty( $rows ) ) : ?>
+				<p class="description">
+					<?php esc_html_e( 'No API requests logged yet. Once clients start connecting, their activity will show up here.', 'wp-llm-connector' ); ?>
+				</p>
+			<?php else : ?>
+				<table class="wp-list-table widefat striped wp-llm-recent-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'When', 'wp-llm-connector' ); ?></th>
+							<th><?php esc_html_e( 'Endpoint', 'wp-llm-connector' ); ?></th>
+							<th><?php esc_html_e( 'IP', 'wp-llm-connector' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'wp-llm-connector' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $rows as $row ) :
+							$ts   = strtotime( $row['timestamp'] . ' UTC' );
+							$code = (int) $row['response_code'];
+							$code_class = 'wp-llm-log-code-unknown';
+							if ( $code >= 200 && $code < 300 ) {
+								$code_class = 'wp-llm-log-code-ok';
+							} elseif ( $code >= 400 && $code < 500 ) {
+								$code_class = 'wp-llm-log-code-warn';
+							} elseif ( $code >= 500 ) {
+								$code_class = 'wp-llm-log-code-err';
+							}
+						?>
+							<tr>
+								<td>
+									<?php
+									/* translators: %s: relative time, e.g. "2 mins ago" */
+									echo esc_html( $ts ? sprintf( __( '%s ago', 'wp-llm-connector' ), human_time_diff( $ts, time() ) ) : '—' );
+									?>
+								</td>
+								<td><code><?php echo esc_html( $row['endpoint'] ); ?></code></td>
+								<td><?php echo esc_html( $row['ip_address'] ); ?></td>
+								<td>
+									<span class="wp-llm-log-code <?php echo esc_attr( $code_class ); ?>">
+										<?php echo esc_html( $code ?: '—' ); ?>
+									</span>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+			<p class="wp-llm-recent-footer">
+				<a href="<?php echo esc_url( $log_url ); ?>">
+					<?php esc_html_e( 'View full log', 'wp-llm-connector' ); ?> &rarr;
+				</a>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the full Access Log page: summary bar, filter form, list table,
+	 * and action buttons (Clear Log, Export CSV). Gracefully handles a
+	 * missing / empty audit log table.
+	 */
+	public function render_access_log_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$filters = $this->get_access_log_filters_from_request();
+		$has_table = $this->audit_table_exists();
+
+		?>
+		<div class="wrap wp-llm-access-log">
+			<h1><?php esc_html_e( 'LLM Connector — Access Log', 'wp-llm-connector' ); ?></h1>
+
+			<?php
+			if ( isset( $_GET['cleared'] ) && '1' === $_GET['cleared']
+				&& isset( $_GET['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'wp_llm_connector_log_cleared' ) ) {
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Access log cleared.', 'wp-llm-connector' ); ?></p>
+				</div>
+				<?php
+			}
+
+			if ( ! $has_table ) {
+				?>
+				<div class="wp-llm-log-empty notice notice-info inline">
+					<p>
+						<strong><?php esc_html_e( 'No audit log table found.', 'wp-llm-connector' ); ?></strong>
+					</p>
+					<p>
+						<?php esc_html_e( 'Deactivate and reactivate the plugin, or visit Settings > LLM Connector once, to create the table. New API requests will then be recorded automatically.', 'wp-llm-connector' ); ?>
+					</p>
+				</div>
+				</div>
+				<?php
+				return;
+			}
+
+			$summary = $this->get_access_log_summary();
+			?>
+
+			<div class="wp-llm-log-summary">
+				<div class="wp-llm-log-summary-item">
+					<span class="wp-llm-log-summary-num"><?php echo esc_html( number_format_i18n( $summary['requests'] ) ); ?></span>
+					<span class="wp-llm-log-summary-label"><?php esc_html_e( 'Requests today', 'wp-llm-connector' ); ?></span>
+				</div>
+				<div class="wp-llm-log-summary-item">
+					<span class="wp-llm-log-summary-num"><?php echo esc_html( number_format_i18n( $summary['unique_ips'] ) ); ?></span>
+					<span class="wp-llm-log-summary-label"><?php esc_html_e( 'Unique IPs today', 'wp-llm-connector' ); ?></span>
+				</div>
+				<div class="wp-llm-log-summary-item">
+					<span class="wp-llm-log-summary-num"><?php echo esc_html( number_format_i18n( $summary['error_rate'], 1 ) ); ?>%</span>
+					<span class="wp-llm-log-summary-label"><?php esc_html_e( 'Error rate today', 'wp-llm-connector' ); ?></span>
+				</div>
+			</div>
+
+			<form method="get" class="wp-llm-log-filters">
+				<input type="hidden" name="page" value="wp-llm-connector-access-log">
+
+				<label>
+					<?php esc_html_e( 'Range', 'wp-llm-connector' ); ?>
+					<select name="range" class="wp-llm-log-range">
+						<?php
+						$ranges = array(
+							'24h'    => __( 'Last 24 hours', 'wp-llm-connector' ),
+							'7d'     => __( 'Last 7 days', 'wp-llm-connector' ),
+							'30d'    => __( 'Last 30 days', 'wp-llm-connector' ),
+							'all'    => __( 'All time', 'wp-llm-connector' ),
+							'custom' => __( 'Custom…', 'wp-llm-connector' ),
+						);
+						foreach ( $ranges as $value => $label ) {
+							printf(
+								'<option value="%s" %s>%s</option>',
+								esc_attr( $value ),
+								selected( $filters['range'], $value, false ),
+								esc_html( $label )
+							);
+						}
+						?>
+					</select>
+				</label>
+
+				<label class="wp-llm-log-custom-range"<?php echo 'custom' === $filters['range'] ? '' : ' style="display:none;"'; ?>>
+					<?php esc_html_e( 'From', 'wp-llm-connector' ); ?>
+					<input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>">
+				</label>
+				<label class="wp-llm-log-custom-range"<?php echo 'custom' === $filters['range'] ? '' : ' style="display:none;"'; ?>>
+					<?php esc_html_e( 'To', 'wp-llm-connector' ); ?>
+					<input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>">
+				</label>
+
+				<label>
+					<?php esc_html_e( 'Status', 'wp-llm-connector' ); ?>
+					<select name="status">
+						<option value="all" <?php selected( $filters['status'], 'all' ); ?>><?php esc_html_e( 'All', 'wp-llm-connector' ); ?></option>
+						<option value="success" <?php selected( $filters['status'], 'success' ); ?>><?php esc_html_e( 'Success (2xx)', 'wp-llm-connector' ); ?></option>
+						<option value="errors" <?php selected( $filters['status'], 'errors' ); ?>><?php esc_html_e( 'Errors (4xx/5xx)', 'wp-llm-connector' ); ?></option>
+					</select>
+				</label>
+
+				<label>
+					<?php esc_html_e( 'Search', 'wp-llm-connector' ); ?>
+					<input type="search" name="s" value="<?php echo esc_attr( $filters['search'] ); ?>" placeholder="<?php esc_attr_e( 'IP or endpoint', 'wp-llm-connector' ); ?>">
+				</label>
+
+				<?php submit_button( __( 'Filter', 'wp-llm-connector' ), 'secondary', '', false ); ?>
+				<a class="button" href="<?php echo esc_url( admin_url( 'options-general.php?page=wp-llm-connector-access-log' ) ); ?>">
+					<?php esc_html_e( 'Reset', 'wp-llm-connector' ); ?>
+				</a>
+			</form>
+
+			<div class="wp-llm-log-actions">
+				<form method="post" action="" class="wp-llm-log-export-form">
+					<?php wp_nonce_field( 'wp_llm_connector_export_log', 'wp_llm_connector_export_nonce' ); ?>
+					<?php foreach ( $filters as $k => $v ) : ?>
+						<input type="hidden" name="<?php echo esc_attr( 'f_' . $k ); ?>" value="<?php echo esc_attr( $v ); ?>">
+					<?php endforeach; ?>
+					<button type="submit" name="wp_llm_export_log" class="button">
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e( 'Export CSV', 'wp-llm-connector' ); ?>
+					</button>
+				</form>
+
+				<form method="post" action="" class="wp-llm-log-clear-form">
+					<?php wp_nonce_field( 'wp_llm_connector_clear_log', 'wp_llm_connector_clear_nonce' ); ?>
+					<button type="submit" name="wp_llm_clear_log" class="button button-link-delete"
+						onclick="return confirm('<?php echo esc_js( __( 'Delete all log entries? This action cannot be undone.', 'wp-llm-connector' ) ); ?>');">
+						<span class="dashicons dashicons-trash"></span>
+						<?php esc_html_e( 'Clear Log', 'wp-llm-connector' ); ?>
+					</button>
+				</form>
+			</div>
+
+			<?php
+			$table = new Access_Log_Table( $filters );
+			$table->prepare_items();
+			?>
+			<form method="get">
+				<input type="hidden" name="page" value="wp-llm-connector-access-log">
+				<?php foreach ( $filters as $k => $v ) : ?>
+					<?php $name = ( 'search' === $k ) ? 's' : $k; ?>
+					<input type="hidden" name="<?php echo esc_attr( $name ); ?>" value="<?php echo esc_attr( $v ); ?>">
+				<?php endforeach; ?>
+				<?php $table->display(); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Handle Clear Log + Export CSV submissions from the Access Log page.
+	 * Must run before headers are sent because CSV export streams a file.
+	 */
+	public function handle_access_log_actions() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified per-action below.
+		if ( ! isset( $_GET['page'] ) || 'wp-llm-connector-access-log' !== $_GET['page'] ) {
+			return;
+		}
+
+		// Export CSV.
+		if ( isset( $_POST['wp_llm_export_log'] ) && check_admin_referer( 'wp_llm_connector_export_log', 'wp_llm_connector_export_nonce' ) ) {
+			$filters = array(
+				'range'  => isset( $_POST['f_range'] ) ? sanitize_key( wp_unslash( $_POST['f_range'] ) ) : '24h',
+				'status' => isset( $_POST['f_status'] ) ? sanitize_key( wp_unslash( $_POST['f_status'] ) ) : 'all',
+				'search' => isset( $_POST['f_search'] ) ? sanitize_text_field( wp_unslash( $_POST['f_search'] ) ) : '',
+				'from'   => isset( $_POST['f_from'] ) ? sanitize_text_field( wp_unslash( $_POST['f_from'] ) ) : '',
+				'to'     => isset( $_POST['f_to'] ) ? sanitize_text_field( wp_unslash( $_POST['f_to'] ) ) : '',
+			);
+			$this->stream_csv_export( $filters );
+			exit;
+		}
+
+		// Clear log.
+		if ( isset( $_POST['wp_llm_clear_log'] ) && check_admin_referer( 'wp_llm_connector_clear_log', 'wp_llm_connector_clear_nonce' ) ) {
+			global $wpdb;
+			$table = $wpdb->prefix . 'llm_connector_audit_log';
+			$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+			wp_safe_redirect(
+				add_query_arg(
+					array(
+						'page'    => 'wp-llm-connector-access-log',
+						'cleared' => '1',
+						'_wpnonce' => wp_create_nonce( 'wp_llm_connector_log_cleared' ),
+					),
+					admin_url( 'options-general.php' )
+				)
+			);
+			exit;
+		}
+	}
+
+	/**
+	 * Stream the filtered access log as a CSV download.
+	 * Runs on admin_init so headers can still be set; calls exit() on success.
+	 *
+	 * @param array $filters Filter array (range/status/search/from/to).
+	 */
+	private function stream_csv_export( array $filters ) {
+		global $wpdb;
+
+		if ( ! $this->audit_table_exists() ) {
+			wp_die( esc_html__( 'Audit log table does not exist.', 'wp-llm-connector' ) );
+		}
+
+		list( $where_sql, $where_args ) = Access_Log_Table::build_where_clause( $filters );
+		$table = $wpdb->prefix . 'llm_connector_audit_log';
+
+		$sql = "SELECT timestamp, endpoint, http_method, execution_time_ms, response_code, ip_address, user_agent
+				FROM {$table}
+				{$where_sql}
+				ORDER BY timestamp DESC
+				LIMIT 100000";
+
+		$rows = $where_args
+			? $wpdb->get_results( $wpdb->prepare( $sql, $where_args ), ARRAY_A ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			: $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="llm-connector-access-log-' . gmdate( 'Ymd-His' ) . '.csv"' );
+
+		$output = fopen( 'php://output', 'w' );
+		fputcsv( $output, array( 'Timestamp (UTC)', 'Endpoint', 'Method', 'Execution ms', 'Response Code', 'IP Address', 'User Agent' ) );
+		foreach ( (array) $rows as $row ) {
+			fputcsv(
+				$output,
+				array(
+					$row['timestamp'] ?? '',
+					$row['endpoint'] ?? '',
+					$row['http_method'] ?? '',
+					$row['execution_time_ms'] ?? '',
+					$row['response_code'] ?? '',
+					$row['ip_address'] ?? '',
+					$row['user_agent'] ?? '',
+				)
+			);
+		}
+		fclose( $output );
 	}
 }
