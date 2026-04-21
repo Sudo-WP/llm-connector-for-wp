@@ -31,31 +31,41 @@ class Plugin {
 	}
 
 	public function init() {
-		// Initialize security first — single instance shared across components.
+		// Wire order (do not reorder without updating CLAUDE.md):
+		// Security → Provider_Registry → API_Handler → Admin →
+		// rest_api_init → wp_ai_client registration → Abilities_Manager →
+		// maybe_upgrade → cleanup cron.
+
+		// 1. Initialize security first — single instance shared across components.
 		$this->security = new Security_Manager();
 
-		// Initialize provider registry.
+		// 2. Initialize provider registry.
 		$this->provider_registry = new Provider_Registry( $this->security );
 		$this->provider_registry->init();
 
-		// Inject security into the API handler.
+		// 3. Inject security into the API handler.
 		$this->api_handler = new API_Handler( $this->security );
 
-		// Initialize admin interface only in admin context.
+		// 4. Initialize admin interface only in admin context.
 		if ( is_admin() ) {
 			$this->admin = new Admin_Interface();
 		}
 
-		// Register REST routes.
+		// 5. Register REST routes.
 		add_action( 'rest_api_init', array( $this->api_handler, 'register_routes' ) );
 
-		// Register WP AI Client providers (WP 7.0+).
+		// 6. Register WP AI Client providers (WP 7.0+).
 		add_action( 'init', array( $this->provider_registry, 'register_wp_ai_client_providers' ) );
 
-		// Initialize abilities manager (WP 6.9+).
+		// 7. Initialize abilities manager (WP 6.9+).
 		$this->abilities_manager = new Abilities_Manager( $this->security, $this->provider_registry );
 
-		// Schedule log cleanup if not already scheduled.
+		// 8. Run any pending schema upgrades (non-activation updates).
+		//    Direct call here rather than a hook — needs to run before any
+		//    REST request can hit log_request() against a stale schema.
+		Activator::maybe_upgrade();
+
+		// 9. Schedule log cleanup if not already scheduled.
 		if ( ! wp_next_scheduled( 'wp_llm_connector_cleanup_logs' ) ) {
 			wp_schedule_event( time(), 'daily', 'wp_llm_connector_cleanup_logs' );
 		}

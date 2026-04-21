@@ -64,9 +64,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "version": "0.1.0",
-  "enabled": true,
-  "read_only": true
+  "timestamp": "2026-04-21 12:34:56"
 }
 ```
 
@@ -200,7 +198,7 @@ wp option get wp_llm_connector_settings --format=json
 # Test health endpoint (no auth required)
 curl https://yoursite.com/wp-json/wp-llm-connector/v1/health
 
-# Expected: {"status":"ok","version":"0.1.0",...}
+# Expected: {"status":"ok","timestamp":"..."}
 ```
 
 ---

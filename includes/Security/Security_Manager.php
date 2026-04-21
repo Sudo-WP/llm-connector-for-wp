@@ -8,8 +8,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Security_Manager {
 	private $settings;
 
+	/**
+	 * Microtime set when the plugin's REST route is about to dispatch. Used
+	 * to compute execution_time_ms for the audit log. Static so it survives
+	 * across the (multiple) Security_Manager instances that may exist in a
+	 * single request lifecycle.
+	 *
+	 * @var float|null
+	 */
+	public static $request_start = null;
+
 	public function __construct() {
 		$this->settings = get_option( 'wp_llm_connector_settings', array() );
+	}
+
+	/**
+	 * Record the start of a REST request so log_request() can emit an
+	 * execution_time_ms. Hooked from API_Handler on rest_pre_dispatch for
+	 * requests inside the plugin's namespace.
+	 */
+	public static function mark_request_start() {
+		self::$request_start = microtime( true );
 	}
 
 	/**
@@ -50,11 +69,38 @@ class Security_Manager {
 					return false;
 				}
 
-				return $key_data;
+				// Forward-compatible write-tier backfill (0.4.0-dev).
+				// Keys generated before the write tier shipped do not have
+				// write_enabled / write_scopes fields. Callers expect these
+				// fields to exist. Defaulting to closed guarantees that a
+				// legacy key is never silently upgraded to write-capable.
+				// See docs/WRITE_TIER.md for the full migration story.
+				return self::apply_write_tier_defaults( $key_data );
 			}
 		}
 
 		return false;
+	}
+
+	/**
+	 * Ensure a key record has the write-tier fields, defaulting to closed.
+	 *
+	 * Pure function — does not touch storage. Callers that need the enriched
+	 * record to persist should save it back to the option after calling.
+	 * For the common validate-on-request path we don't persist; the next
+	 * settings save will normalize the record via Admin_Interface::sanitize_settings().
+	 *
+	 * @param array $key_data Raw per-key record from the options row.
+	 * @return array          Record guaranteed to have write_enabled and write_scopes.
+	 */
+	private static function apply_write_tier_defaults( array $key_data ) {
+		if ( ! array_key_exists( 'write_enabled', $key_data ) ) {
+			$key_data['write_enabled'] = false;
+		}
+		if ( ! array_key_exists( 'write_scopes', $key_data ) || ! is_array( $key_data['write_scopes'] ) ) {
+			$key_data['write_scopes'] = array();
+		}
+		return $key_data;
 	}
 
 	/**
@@ -124,17 +170,28 @@ class Security_Manager {
 			? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) )
 			: '';
 
+		$http_method = isset( $_SERVER['REQUEST_METHOD'] )
+			? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) )
+			: null;
+
+		$execution_ms = null;
+		if ( null !== self::$request_start ) {
+			$execution_ms = round( ( microtime( true ) - self::$request_start ) * 1000, 2 );
+		}
+
 		$wpdb->insert(
 			$table_name,
 			array(
-				'api_key_hash' => sanitize_text_field( $api_key_hash ),
-				'endpoint'     => sanitize_text_field( $endpoint ),
-				'request_data' => wp_json_encode( $request_data ),
-				'response_code' => absint( $response_code ),
-				'ip_address'   => $this->get_client_ip(),
-				'user_agent'   => $user_agent,
+				'api_key_hash'      => sanitize_text_field( $api_key_hash ),
+				'endpoint'          => sanitize_text_field( $endpoint ),
+				'http_method'       => $http_method,
+				'execution_time_ms' => $execution_ms,
+				'request_data'      => wp_json_encode( $request_data ),
+				'response_code'     => absint( $response_code ),
+				'ip_address'        => $this->get_client_ip(),
+				'user_agent'        => $user_agent,
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%f', '%s', '%d', '%s', '%s' )
 		);
 	}
 

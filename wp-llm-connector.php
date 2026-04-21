@@ -2,8 +2,8 @@
 /**
  * Plugin Name: LLM Connector for WordPress
  * Plugin URI: https://github.com/Sudo-WP/llm-connector-for-wp
- * Description: Connect your WordPress site to LLM agents for secure diagnostics and AI-powered features. Supports WP 7.0 AI Client provider registration, Abilities API integration, and MCP for Claude Code, Gemini CLI, and more.
- * Version: 2.0.0
+ * Description: Read-only MCP bridge for WordPress — Claude.ai Web UI, Claude Code, Gemini CLI, and other MCP clients connect inbound via the auto-generated MCP config. Optional AI provider integration (Anthropic, OpenAI, Gemini) lets WordPress call LLMs outbound, with WP 7.0 AI Client and WP 6.9 Abilities API support.
+ * Version: 2.1.0
  * Author: SudoWP
  * Author URI: https://sudowp.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'WP_LLM_CONNECTOR_VERSION', '2.0.0' );
+define( 'WP_LLM_CONNECTOR_VERSION', '2.1.0' );
 define( 'WP_LLM_CONNECTOR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP_LLM_CONNECTOR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WP_LLM_CONNECTOR_PLUGIN_FILE', __FILE__ );

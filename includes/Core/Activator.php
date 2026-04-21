@@ -10,9 +10,15 @@ class Activator {
 	/**
 	 * Current database schema version.
 	 *
+	 * 1.0 — initial audit log
+	 * 1.1 — added http_method and execution_time_ms columns (MCP-bridge line)
+	 * 2.0 — added provider column + index (providers line)
+	 * 2.1 — merged: http_method, execution_time_ms, provider, plus indexes
+	 *       on provider, response_code, and ip_address
+	 *
 	 * @var string
 	 */
-	const DB_VERSION = '2.0';
+	const DB_VERSION = '2.1';
 
 	public static function activate() {
 		// Create default options (only if they don't exist).
@@ -64,7 +70,25 @@ class Activator {
 	}
 
 	/**
+	 * Run any pending schema upgrades on plugin load. Safe to call on every
+	 * request; returns quickly when the stored db version matches the code.
+	 *
+	 * Public alias used by Plugin::init() on plugins_loaded so in-place
+	 * updates pick up schema changes without requiring reactivation.
+	 */
+	public static function maybe_upgrade() {
+		self::create_or_upgrade_table();
+	}
+
+	/**
 	 * Create or upgrade the audit log table with version tracking.
+	 *
+	 * Schema 2.1 columns (merged from both development lines):
+	 *   id, timestamp, api_key_hash, endpoint, request_data,
+	 *   response_code, ip_address, user_agent, provider,
+	 *   http_method, execution_time_ms
+	 *
+	 * Indexes: timestamp, api_key_hash, provider, response_code, ip_address.
 	 */
 	public static function create_or_upgrade_table() {
 		$installed_version = get_option( 'wp_llm_connector_db_version', '0' );
@@ -82,6 +106,8 @@ class Activator {
 			timestamp datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 			api_key_hash varchar(64) NOT NULL,
 			endpoint varchar(255) NOT NULL,
+			http_method varchar(10) DEFAULT NULL,
+			execution_time_ms float DEFAULT NULL,
 			request_data text,
 			response_code int(3),
 			ip_address varchar(45),
@@ -90,7 +116,9 @@ class Activator {
 			PRIMARY KEY  (id),
 			KEY timestamp (timestamp),
 			KEY api_key_hash (api_key_hash),
-			KEY provider (provider)
+			KEY provider (provider),
+			KEY response_code (response_code),
+			KEY ip_address (ip_address)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

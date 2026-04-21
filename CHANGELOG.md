@@ -5,6 +5,32 @@ All notable changes to the WP LLM Connector plugin will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-21
+
+### Added
+- `/mcp` REST endpoint with filtered tool manifest (`GET /wp-json/wp-llm-connector/v1/mcp`). Authenticated via `X-WP-LLM-API-Key`; intentionally exempt from the per-endpoint allowlist so an authenticated client can always discover which tools the installation exposes.
+- `build_mcp_manifest()` static helper in `API_Handler` for unit testing the manifest logic independently of the REST layer.
+- `wp_full_diagnostics` composite tool entry in the `/mcp` manifest — advertised only when all four prerequisite endpoints (`site_info`, `plugin_list`, `theme_list`, `system_status`) are enabled.
+- Access Log admin panel at `Settings > LLM Connector Log` — `WP_List_Table` (`includes/Admin/Access_Log_Table.php`) with filters (range / status / search), pagination, Clear Log, Export CSV.
+- Recent Activity widget on the main settings page (last 5 log entries with "View full log →" link).
+- "Connect Your AI Client" section in the API Keys tab with auto-generated MCP config for Claude.ai Web UI (Verified), Claude Code, Gemini CLI, and Cursor / Windsurf / VS Code (Cline).
+- Inline Test Connection badge pinging `/health` via admin-ajax.
+- Write-tier permission scaffold (`includes/Security/Write_Permission_Manager.php`). **No write endpoints are exposed yet** — `authorize_write_request()` fails closed with a `503` until the endpoints and UI are built.
+- `CLAUDE.md`, `HANDOFF.md`, `SECURITY.md`, `docs/WRITE_TIER.md` — project governance docs.
+
+### Changed
+- DB schema to 2.1: adds `http_method` and `execution_time_ms` columns alongside the existing `provider` column from 2.0. Added indexes on `response_code` and `ip_address` for filter/sort performance. Applied automatically on update via `Activator::maybe_upgrade()` hooked from `Plugin::init()`, so in-place upgrades pick up the schema without reactivation.
+- `Security_Manager::validate_api_key()` — `write_enabled` / `write_scopes` backfill on read, for forward-compatible per-key schema evolution. Existing keys stay read-only until the site owner explicitly flips the flag.
+- `Security_Manager::log_request()` — captures `http_method` from `$_SERVER['REQUEST_METHOD']` and `execution_time_ms` from a REST-dispatch start timer hooked on `rest_pre_dispatch` for the plugin namespace.
+- `Admin_Interface::sanitize_settings()` — preserves `write_enabled` / `write_scopes` through settings round-trips; whitelists scopes against `[posts, plugins, options, users, cache]`.
+- AI Providers tab gains a clarification notice separating provider config (WordPress calling LLMs outbound) from MCP client config (LLMs calling WordPress inbound) — eliminates the two-direction-confusion that several early users hit.
+- `SECURITY.md` now documents the provider outbound HTTP exception explicitly: when an admin enables a provider on the AI Providers tab, `generate_text()` issues `wp_remote_post()` to that provider's endpoint.
+- `CLAUDE.md` updated for the full merged subsystem inventory + an architecture rule covering provider-API-key storage.
+- Plugin version bumped to 2.1.0 (`wp-llm-connector.php` header, `WP_LLM_CONNECTOR_VERSION`, `readme.txt` Stable tag).
+
+### Merge notes
+- This release merges the `v0.4.0-dev` MCP-bridge line into the `main` v2.0.0 providers line. **Nothing was removed from either side.** The providers system (Anthropic, OpenAI, Gemini), Provider_Registry, Abilities_Manager, and WP 7.0 AI Client + WP 6.9 Abilities API integrations are all retained from the 2.0.0 line.
+
 ## [2.0.0] - 2026-03-26
 
 ### Added
@@ -89,7 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/health` - Health check (no authentication required)
 - `/site-info` - Basic site information
 - `/plugins` - List all installed plugins
-- `/themes` - List all installed themes  
+- `/themes` - List all installed themes
 - `/system-status` - Comprehensive system diagnostics
 - `/user-count` - User statistics by role
 - `/post-stats` - Content statistics by post type

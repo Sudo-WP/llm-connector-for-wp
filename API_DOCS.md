@@ -79,12 +79,60 @@ Check connector status and version.
 ```json
 {
   "status": "ok",
-  "version": "0.1.0",
-  "enabled": true,
-  "read_only": true,
-  "timestamp": "2025-02-07 10:30:00"
+  "timestamp": "2026-04-21 12:34:56"
 }
 ```
+
+---
+
+### MCP Manifest
+
+Returns the MCP server manifest: the list of tools this installation exposes, filtered to the endpoints currently enabled in `Settings > LLM Connector`. This is the discovery endpoint that Claude.ai and other MCP clients hit first when connecting.
+
+**Endpoint:** `GET /mcp`
+**Authentication:** Required (`X-WP-LLM-API-Key`)
+
+Not gated by the per-endpoint allowlist: an authenticated client always receives the manifest, even when every data endpoint has been disabled (in that case, `tools` is an empty array).
+
+**Response:**
+```json
+{
+  "name": "wordpress-my-site",
+  "version": "1.0",
+  "description": "Read-only WordPress MCP bridge — My Site",
+  "transport": "http",
+  "auth": {
+    "type": "header",
+    "header": "X-WP-LLM-API-Key"
+  },
+  "tools": [
+    { "name": "wp_site_info",     "endpoint": "/site-info",     "method": "GET" },
+    { "name": "wp_plugins",       "endpoint": "/plugins",        "method": "GET" },
+    { "name": "wp_themes",        "endpoint": "/themes",         "method": "GET" },
+    { "name": "wp_system_status", "endpoint": "/system-status",  "method": "GET" },
+    { "name": "wp_user_count",    "endpoint": "/user-count",     "method": "GET" },
+    { "name": "wp_post_stats",    "endpoint": "/post-stats",     "method": "GET" },
+    {
+      "name": "wp_full_diagnostics",
+      "composite": true,
+      "description": "Runs site-info, plugins, themes, and system-status in sequence and aggregates the responses.",
+      "steps": [
+        { "endpoint": "/site-info",     "method": "GET" },
+        { "endpoint": "/plugins",       "method": "GET" },
+        { "endpoint": "/themes",        "method": "GET" },
+        { "endpoint": "/system-status", "method": "GET" }
+      ]
+    }
+  ],
+  "base_url": "https://example.com/wp-json/wp-llm-connector/v1"
+}
+```
+
+**Notes:**
+- `name` is derived from `get_bloginfo('name')` via `sanitize_title()` (`wordpress-<slug>`), falling back to `wordpress-site` if the site title sanitizes to an empty string.
+- `tools[].endpoint` values are relative to `base_url`. Concatenate for the absolute URL.
+- `wp_full_diagnostics` is only advertised when all four of its component endpoints (`site_info`, `plugin_list`, `theme_list`, `system_status`) are enabled — otherwise it is omitted rather than advertised as partially-broken.
+- The manifest build logic is exposed as a static helper for unit testing: `API_Handler::build_mcp_manifest( array $settings ): array`.
 
 ---
 
@@ -476,5 +524,5 @@ For API issues or questions:
 ---
 
 **API Version:** v1  
-**Plugin Version:** 0.1.0  
-**Last Updated:** 2025-02-07
+**Plugin Version:** 0.2.1  
+**Last Updated:** 2026-04-21

@@ -256,6 +256,303 @@
 }
 
 /* ========================================
+   Connect Your AI Client
+   ======================================== */
+
+.wp-llm-connect-client {
+	margin-top: 30px;
+	padding-top: 20px;
+	border-top: 1px solid #dcdcde;
+}
+
+.wp-llm-connect-client h2 {
+	margin-top: 0;
+	font-size: 18px;
+}
+
+.wp-llm-connect-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin: 12px 0;
+}
+
+.wp-llm-connect-label {
+	font-weight: 600;
+	min-width: 80px;
+}
+
+.wp-llm-client-select {
+	min-width: 300px;
+	max-width: 100%;
+}
+
+.wp-llm-verified-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: #edfaef;
+	color: #00450c;
+	border: 1px solid #b8e0bf;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.wp-llm-verified-badge .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 14px;
+	color: #007017;
+}
+
+.wp-llm-mcp-snippet {
+	background: #f5f5f5;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	padding: 12px;
+	margin: 10px 0;
+	font-family: Menlo, Consolas, "Courier New", monospace;
+	font-size: 12px;
+	max-height: 320px;
+	overflow: auto;
+	white-space: pre;
+}
+
+.wp-llm-connect-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+
+.wp-llm-connect-actions .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.wp-llm-connect-actions .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+}
+
+#wp-llm-copy-config.copied {
+	background: #00a32a !important;
+	border-color: #008a20 !important;
+	color: #fff !important;
+}
+
+.wp-llm-test-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 10px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	min-height: 22px;
+}
+
+.wp-llm-test-status.is-testing {
+	background: #f0f6fc;
+	color: var(--wp-admin-theme-color, #2271b1);
+	border: 1px solid #c3d4e6;
+}
+
+.wp-llm-test-status.is-ok {
+	background: #edfaef;
+	color: #00450c;
+	border: 1px solid #b8e0bf;
+}
+
+.wp-llm-test-status.is-fail {
+	background: #fcf0f1;
+	color: #8a1f11;
+	border: 1px solid #f0c1c2;
+}
+
+/* ========================================
+   Access Log — summary, filters, list table
+   ======================================== */
+
+.wp-llm-access-log .wp-llm-log-summary {
+	display: flex;
+	gap: 16px;
+	margin: 16px 0 20px;
+	flex-wrap: wrap;
+}
+
+.wp-llm-log-summary-item {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid var(--wp-admin-theme-color, #2271b1);
+	padding: 12px 18px;
+	min-width: 160px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.wp-llm-log-summary-num {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.1;
+	color: #1d2327;
+}
+
+.wp-llm-log-summary-label {
+	font-size: 12px;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.wp-llm-log-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: end;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 12px;
+	margin-bottom: 12px;
+}
+
+.wp-llm-log-filters label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	color: #50575e;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.wp-llm-log-filters input,
+.wp-llm-log-filters select {
+	font-weight: normal;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.wp-llm-log-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	margin-bottom: 10px;
+	flex-wrap: wrap;
+}
+
+.wp-llm-log-actions .button .dashicons {
+	margin-right: 4px;
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+	vertical-align: text-top;
+}
+
+.wp-llm-log-empty {
+	padding: 14px 16px;
+}
+
+/* Response code badges */
+.wp-llm-log-code {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-weight: 700;
+	font-size: 12px;
+	min-width: 36px;
+	text-align: center;
+}
+
+.wp-llm-log-code-ok {
+	background: #edfaef;
+	color: #00450c;
+	border: 1px solid #b8e0bf;
+}
+
+.wp-llm-log-code-warn {
+	background: #fcf4e4;
+	color: #674600;
+	border: 1px solid #f0d18e;
+}
+
+.wp-llm-log-code-err {
+	background: #fcf0f1;
+	color: #8a1f11;
+	border: 1px solid #f0c1c2;
+}
+
+.wp-llm-log-code-unknown {
+	background: #f0f0f1;
+	color: #50575e;
+	border: 1px solid #dcdcde;
+}
+
+/* Method pills */
+.wp-llm-log-method {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	background: #f0f6fc;
+	color: var(--wp-admin-theme-color, #2271b1);
+	border: 1px solid #c3d4e6;
+}
+
+.wp-llm-log-method-post { background: #fcf4e4; color: #674600; border-color: #f0d18e; }
+.wp-llm-log-method-delete { background: #fcf0f1; color: #8a1f11; border-color: #f0c1c2; }
+.wp-llm-log-method-put,
+.wp-llm-log-method-patch { background: #edfaef; color: #00450c; border-color: #b8e0bf; }
+
+.wp-llm-log-na {
+	color: #8c8f94;
+}
+
+.wp-llm-log-ts-abs {
+	font-family: Menlo, Consolas, "Courier New", monospace;
+	font-size: 12px;
+}
+
+.wp-llm-log-ts-rel {
+	font-size: 11px;
+	color: #646970;
+}
+
+/* Recent Activity widget */
+.wp-llm-recent-activity {
+	margin-top: 20px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 15px;
+}
+
+.wp-llm-recent-activity h2 {
+	margin-top: 0;
+	font-size: 16px;
+}
+
+.wp-llm-recent-table {
+	margin-top: 8px;
+}
+
+.wp-llm-recent-footer {
+	margin: 10px 0 0;
+	text-align: right;
+}
+
+/* ========================================
    Responsive: Mobile
    ======================================== */
 
@@ -286,6 +583,26 @@
 	.wp-llm-copy-new-key {
 		width: 100%;
 		justify-content: center;
+	}
+
+	.wp-llm-client-select {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.wp-llm-connect-actions .button {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.wp-llm-log-filters label,
+	.wp-llm-log-filters select,
+	.wp-llm-log-filters input {
+		width: 100%;
+	}
+
+	.wp-llm-log-summary-item {
+		flex: 1 1 100%;
 	}
 }
 
