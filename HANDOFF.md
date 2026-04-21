@@ -6,22 +6,20 @@ Living session snapshot. Updated at the end of every significant work block. Rea
 
 **Version:** 0.4.0-dev (last shipped: 0.3.0)
 **Date:** 2026-04-21
-**Status:** Write-tier groundwork in place — design doc, permission scaffold, and API-key schema additions. **No write endpoints are exposed in this build.** `authorize_write_request()` fails closed with a `503`, so any accidental early wiring of a write route is a safe-fail.
+**Status:** Git state resolved — all local 0.2.0 → 0.3.0 → 0.4.0-dev work is now committed on `v0.4.0-dev` branch and pushed to `origin`. `main` is untouched and still holds origin's v2.0.0 "providers" line. A PR description has been produced for the reviewer to paste into GitHub; merge strategy (this branch becomes trunk vs. providers ported onto it vs. cherry-pick) is the reviewer's call.
 
 ## What was just completed
 
-- **`docs/WRITE_TIER.md`** — new. Authoritative design document for the premium write tier. Covers in/out-of-scope operations, the option allowlist (hard-coded, not settings-driven), the five permission gates (read-tier → per-key write flag → per-key scopes → one-time token → WP capability), audit-trail shape (`_diff` convention on success; mandatory failure logging), API key schema additions, write-route naming convention (`/wp-llm-connector/v1/write/*` — a single firewall rule enforces read-only at the infrastructure level), UI changes needed in `Admin_Interface.php`, and an explicit implementation order.
-- **`includes/Security/Write_Permission_Manager.php`** — new. Scaffold class. Security-critical methods fully implemented:
-  - `generate_write_token()`: 64-char hex from `random_bytes(32)`; stored as a SHA-256-hashed transient (`wp_llm_connector_write_token_<hash>`) with a 15-minute TTL.
-  - `validate_and_consume_token()`: length + charset guard before any storage hit; `delete_transient()` on successful validation so single-use semantics hold across concurrent replays.
-  - `key_has_write_access()`: options-table lookup by `key_hash`, requires `active: true` **and** `write_enabled: true`.
-  - `check_write_capability()` and `authorize_write_request()` stubbed with TODOs. `authorize_write_request()` returns a `WP_Error` (`503 write_tier_not_implemented`) so a half-wired write endpoint fails closed.
-- **`includes/Admin/Admin_Interface.php`** — new keys created through `handle_api_key_actions()` now carry `write_enabled: false` and `write_scopes: []`. `sanitize_settings()` preserves both fields through settings round-trips and whitelists `write_scopes` against `[posts, plugins, options, users, cache]`.
-- **`includes/Security/Security_Manager.php`** — `validate_api_key()` now runs every matching key through `apply_write_tier_defaults()`, which backfills `write_enabled: false` / `write_scopes: []` on read. Forward-compatible migration — no DB version bump, no activation hook, no upgrade step required. Legacy (pre-0.4.0) keys are returned to callers with closed write flags regardless of storage state.
-- **`CLAUDE.md`** — new permanent **Release workflow** section: smoke-test checklist (`/health`, `/site-info`, `/mcp`, admin settings, Access Log), the ordered release routine (lint → smoke → version bump in the correct file order → HANDOFF update → git status → commit → push → verify), and the hard-rules list (no credentials / live URLs / `wp-config.php` in commits, no `--no-verify`, no force-push to `main` without explicit per-push approval). Version line updated to reflect 0.4.0-dev / last-shipped 0.3.0. Repo-layout block updated to list `Write_Permission_Manager.php` and `docs/WRITE_TIER.md`.
-- **`CHANGELOG.md`** — new `## [Unreleased]` section at the top covering all of the above. `readme.txt` Stable tag intentionally stays at `0.3.0` until the write tier ships.
-- **Version bump:** `wp-llm-connector.php` header + `WP_LLM_CONNECTOR_VERSION` constant → `0.4.0-dev`.
-- **Lint:** `php -l` clean on every new / changed PHP file; `node --check` clean on `assets/js/admin.js` (no JS changes this session, verified anyway).
+- **Branch `v0.4.0-dev` created** from the previously detached `43aaec1` and pushed to `origin`. PR URL: `https://github.com/Sudo-WP/llm-connector-for-wp/pull/new/v0.4.0-dev`.
+- **Single squashed commit** (`7bb34ca feat: v0.3.0 + v0.4.0-dev groundwork`) bundles everything that was sitting uncommitted on the detached HEAD — 19 files (13 modified + 6 new), +2523/−59. Covers the full span of work from this session and the three prior sessions (0.2.0 MCP config generator, 0.2.1 Access Log, 0.3.0 `/mcp` endpoint + docs, 0.4.0-dev write-tier groundwork).
+- **Pre-commit audit** run per CLAUDE.md's Release workflow:
+  - `git log origin/main -10` — confirmed origin is on the "v2.0.0 providers" line (`Anthropic_Provider.php`, `Gemini_Provider.php`, `OpenAI_Provider.php`, `Provider_Registry.php`, `LLM_Provider_Interface.php`, `Abilities_Manager.php`). Different product direction from ours.
+  - `git diff --stat origin/main` — 23 files, ~4,640 lines; structural fork (origin adds `Providers/*` + `Abilities/*` subtrees we don't have; we add `Access_Log_Table.php`, `Write_Permission_Manager.php`, `/mcp` endpoint, governance docs origin doesn't have).
+  - Secrets scan on `git diff origin/main` — only hits were placeholders (`YOUR_API_KEY_HERE`, `wpllm_your_api_key_here`, `prod_key_here`, `staging_key_here`), header names (`X-WP-LLM-API-Key`), documentation references to credentials. No live keys, no `sk-*`, no AWS keys, no Bearer tokens, no live URLs, no `wp-config` content.
+- **PR description produced** for the reviewer. Covers: TL;DR of the divergence (inbound MCP vs. outbound providers), this branch's contents, reconciliation notes (file-level side-by-side of what each side has that the other doesn't), merge recommendation ("use this branch as the new trunk and port origin's Providers + Abilities on top as additive features" with caveats on version numbering and `SECURITY.md` updates if providers land), and a reviewer testing checklist (smoke, upgrade path, write-tier scaffold safety checks, security greps, merge-specific checks).
+- **`HANDOFF.md`** — this update (you're reading it).
+
+**Not run this session (intentional):** no version bump, no `readme.txt` changes, no `CHANGELOG.md` entry. This was a git-housekeeping session only. The plugin code is unchanged since the previous session.
 
 ## State of each major subsystem
 
@@ -45,18 +43,21 @@ Unchanged this session. Tracks `X-WP-LLM-API-Key` and the `/mcp` manifest correc
 
 ## Open tasks (prioritised)
 
-1. **Admin UI for per-key write flags and write-session tokens. (M)** Covers the per-key "Enable write access" checkbox, the scope checkboxes (posts / plugins / options / users / cache), the "Generate write session token" button wired to `Write_Permission_Manager::generate_write_token()`, and the red "Use on staging first" callout. See `docs/WRITE_TIER.md` §"UI changes needed". **Do not ship without also shipping a working write endpoint** — a UI that toggles flags no endpoint respects is a footgun.
-2. **First write endpoint: `POST /write/cache/flush`. (S–M)** Lowest-risk v1 write — idempotent, no resource diff, `manage_options` capability. Use it to prove the full permission chain end to end, then move on to `POST /write/posts` and the rest. Fully implement `Write_Permission_Manager::authorize_write_request()` as part of this.
-3. **Add `owner_user_id` to the per-key record.** (S) Capture `get_current_user_id()` at key generation; backfill to `0` on read for legacy keys. Required for `check_write_capability()` to run against the right user context rather than `current_user_can()` (which is `WP_User(0)` on REST requests).
-4. Webhook support for proactive alerts. (M) Design first: outbound auth, retry policy, payload signing. Separate doc (`docs/WEBHOOKS.md`) before any code.
-5. Saved filter presets in the Access Log panel. (S) Pure UI + options storage.
-6. Test Connection in the admin should additionally fetch `/mcp` and validate the manifest shape. (S)
-7. Custom endpoint builder (GUI). (L) Read-only endpoints only; no raw SQL; sandbox carefully.
+1. **Review PR, decide on merge strategy with origin/main's providers line, merge to main. (M)** PR is open at `https://github.com/Sudo-WP/llm-connector-for-wp/pull/new/v0.4.0-dev`. Three viable paths (see PR description for full reasoning): (a) make `v0.4.0-dev` the new trunk and port origin's `Providers/*` + `Abilities/*` subtrees on top as additive features — recommended; (b) keep origin's v2.0.0 as trunk and cherry-pick MCP endpoint / Access Log / write-tier scaffold forward; (c) merge both with explicit conflict resolution in `Plugin.php` / `Admin_Interface.php`. Version reconciliation is a hard requirement either way — this branch's `Stable tag: 0.3.0` is lower than origin's `2.0.0` and would regress wp.org users if pushed as-is.
+2. **Admin UI for per-key write flags and write-session tokens. (M)** Covers the per-key "Enable write access" checkbox, the scope checkboxes (posts / plugins / options / users / cache), the "Generate write session token" button wired to `Write_Permission_Manager::generate_write_token()`, and the red "Use on staging first" callout. See `docs/WRITE_TIER.md` §"UI changes needed". **Do not ship without also shipping a working write endpoint** — a UI that toggles flags no endpoint respects is a footgun.
+3. **First write endpoint: `POST /write/cache/flush`. (S–M)** Lowest-risk v1 write — idempotent, no resource diff, `manage_options` capability. Use it to prove the full permission chain end to end, then move on to `POST /write/posts` and the rest. Fully implement `Write_Permission_Manager::authorize_write_request()` as part of this.
+4. **Add `owner_user_id` to the per-key record.** (S) Capture `get_current_user_id()` at key generation; backfill to `0` on read for legacy keys. Required for `check_write_capability()` to run against the right user context rather than `current_user_can()` (which is `WP_User(0)` on REST requests).
+5. Webhook support for proactive alerts. (M) Design first: outbound auth, retry policy, payload signing. Separate doc (`docs/WEBHOOKS.md`) before any code.
+6. Saved filter presets in the Access Log panel. (S) Pure UI + options storage.
+7. Test Connection in the admin should additionally fetch `/mcp` and validate the manifest shape. (S)
+8. Custom endpoint builder (GUI). (L) Read-only endpoints only; no raw SQL; sandbox carefully.
 
 ## Decisions log
 
 Reverse-chronological.
 
+- **2026-04-21** | Local work landed on `v0.4.0-dev` branch, not force-pushed to `main` | Origin's v2.0.0 "providers" line is genuine upstream work representing a real (if divergent) product direction, not abandoned scratch. Destroying it with a force-push would be irreversible and would lose potentially-valuable code. Opening a PR from `v0.4.0-dev` → `main` puts the reconciliation decision in review, where it belongs.
+- **2026-04-21** | Single commit for four sessions' worth of uncommitted work | The uncommitted pile covered 0.2.0 → 0.2.1 → 0.3.0 → 0.4.0-dev. Reconstructing the commit boundaries retroactively would fabricate history; a single honest "feat: v0.3.0 + v0.4.0-dev groundwork" commit with a commit-body manifest of which file changed for which reason is clearer than pretending clean increments existed all along.
 - **2026-04-21** | Write-tier migration is options-only, no DB version bump | Per-key fields live in `wp_llm_connector_settings`. Backfill-on-read in `validate_api_key()` is simpler and safer than an activation-time rewrite that could race with a live site.
 - **2026-04-21** | `authorize_write_request()` fails closed with a 503 in the scaffold | Shipping a permission gate whose half-built body returns "allowed by default" is strictly worse than one that 503s. A 503 surfaces the gap loudly; a silent allow hides it.
 - **2026-04-21** | Write scopes hard-coded in the sanitizer, not driven by settings | A runtime-editable scope list collapses to "any scope is valid" once it's in the hands of anyone with admin access. Code-level allowlist is the invariant.
@@ -80,3 +81,4 @@ Reverse-chronological.
 - **`/mcp` authentication:** allowlist check only runs when `get_endpoint_slug()` returns non-false. `/mcp` isn't in `$endpoint_map`, so allowlist is skipped; auth still runs. Don't add `/mcp` to `$endpoint_map` unless you also want disabling it to lock clients out of discovery.
 - **Write-tier fields on legacy keys** are backfilled at read time, not at upgrade time. A `get_option()` call that bypasses `validate_api_key()` will see raw records without the new fields — callers must either go through `validate_api_key()` or apply the defaults themselves.
 - **`nav-tab-wrapper` vs. separate submenu:** we kept a separate `add_submenu_page` for the Access Log rather than tabs inside the main page. Don't undo that without solving the form-wrapping-a-list-table awkwardness.
+- **Version numbering trap on merge:** this branch's `Stable tag` is `0.3.0` and `WP_LLM_CONNECTOR_VERSION` is `0.4.0-dev`. Origin/main's `Stable tag` is `2.0.0`. Any merge that lands on `main` and becomes a wp.org update **must** bump to `≥ 2.x` first, or existing v2.0.0 installs receive a "newer" version from wp.org that has a lower Stable tag — which most plugin update systems will refuse, confusingly. Port origin's 2.0.0 changelog entries forward alongside ours so `CHANGELOG.md` doesn't have a history gap.
