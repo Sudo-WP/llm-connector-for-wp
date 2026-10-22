@@ -282,8 +282,6 @@ wp-llm-connector/
 ├── CHANGELOG.md                  # Keep-a-Changelog format
 ├── readme.txt                    # WordPress.org format
 ├── SECURITY.md                   # Threat model + security claims
-├── CLAUDE.md                     # Orientation doc for session start
-├── HANDOFF.md                    # Living session snapshot
 └── README.md                     # This file
 ```
 
@@ -349,7 +347,7 @@ Schema version is tracked in the `wp_llm_connector_db_version` option. Current: 
 
 ## Contributing
 
-Contributions, feedback, and suggestions are welcome. See `CLAUDE.md` and `HANDOFF.md` for the project governance model and current open tasks.
+Contributions, feedback, and suggestions are welcome.
 
 ### Development Setup
 
@@ -357,8 +355,7 @@ Contributions, feedback, and suggestions are welcome. See `CLAUDE.md` and `HANDO
 2. Install on a local WordPress instance
 3. Enable `WP_DEBUG` and `WP_DEBUG_LOG`
 4. Make your changes
-5. Run the verification checklist in `CLAUDE.md`
-6. Test thoroughly
+5. Test thoroughly
 
 ## Changelog
 
