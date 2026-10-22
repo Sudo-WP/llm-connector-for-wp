@@ -4,3 +4,8 @@ PROJECT_OVERVIEW.md
 PRICING_REVENUE_STREAMS.md
 *_INTERNAL.md
 *_PRIVATE.md
+
+# Local guidance, never commit
+CLAUDE.md
+HANDOFF.md
+.claude/
